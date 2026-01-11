@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.6.1-blue.svg)
+![Version](https://img.shields.io/badge/version-2.6.2-blue.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-orange.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)
@@ -299,17 +299,6 @@ anichi play one-piece-sub-indo 1070
 # Directly streams One Piece episode 1070
 ```
 
-**Options:**
-
-- `-p, --player <path>` - Custom player path (e.g., `"C:\mpv\mpv.exe"`)
-- `-a, --args <args>` - Player arguments (e.g., `"--fullscreen --no-audio-display"`)
-
-**Example with Options:**
-
-```bash
-anichi play naruto-shippuden-sub-indo 100 -p "C:\mpv\mpv.exe" -a "--fs --loop"
-```
-
 #### Configuration Management
 
 Manage your playback preferences:
@@ -320,9 +309,6 @@ anichi config show
 
 # Set default player path
 anichi config set playerPath "C:\mpv\mpv.exe"
-
-# Set default player arguments
-anichi config set playerArgs "--fullscreen --no-border"
 ```
 
 **Configuration File Location:**
@@ -469,50 +455,6 @@ anichi/
 ├── CHANGELOG.md       # Version history
 └── LICENSE            # MIT License
 ```
-
----
-
-## 🛠️ Development
-
-### Local Development Setup
-
-```bash
-# Clone repository
-git clone https://github.com/yourusername/anichi.git
-cd anichi
-
-# Install dependencies
-npm install
-
-# Start development mode (watches for changes)
-npm run dev
-
-# Build project
-npm run build
-
-# Link globally for testing
-npm link
-
-# Test the CLI
-anichi home
-```
-
-### Available NPM Scripts
-
-```bash
-npm run build       # Compile TypeScript to JavaScript
-npm run dev         # Development mode with auto-reload
-npm run test        # Run test suite (if configured)
-npm run lint        # Check code style with ESLint
-npm start           # Run built application
-```
-
-### Code Style
-
-- **Language**: TypeScript 5.x
-- **Linter**: ESLint
-- **Format**: Automatic via tsconfig.json
-- **Conventions**: camelCase for variables, PascalCase for types/interfaces
 
 ---
 
