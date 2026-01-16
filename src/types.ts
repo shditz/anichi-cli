@@ -223,3 +223,22 @@ export interface GenreAnimeData {
 }
 
 export type GenreAnimeResponse = ApiResponse<GenreAnimeData>;
+
+// Tambahan untuk riwayat
+export interface WatchHistoryItem {
+  animeTitle: string;
+  slug: string; // animeId/slug untuk putar ulang
+  episode: number;
+  timestamp: string; // new Date().toISOString()
+}
+
+export const theme = {
+  primary: "#00d9ff",
+  secondary: "#ff6b9d",
+  success: "#00ff9f",
+  warning: "#ffaa00",
+  error: "#ff4757",
+  info: "#70a1ff",
+  muted: "#747d8c",
+  border: "#3a506b",
+};

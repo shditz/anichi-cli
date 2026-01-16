@@ -1,11 +1,12 @@
 import chalk from "chalk";
 import ora from "ora";
-import {Command} from "commander";
+import { Command } from "commander";
 import readline from "readline";
 import open from "open";
 import api from "./api";
-import {playUrl} from "./player";
-import {loadConfig, saveConfig, getConfigPath} from "./config";
+import { playUrl } from "./player";
+import { loadConfig, saveConfig, getConfigPath } from "./config";
+import { theme } from "./ui";
 import {
   clearScreen,
   showBanner,
@@ -26,8 +27,10 @@ import {
   printGenreAnimeList,
   printPaginationControls,
   printFAQ,
+  printWatchHistory,           // ← Tambahan untuk riwayat
 } from "./ui";
-import {AnimeDetailData} from "./types";
+import { AnimeDetailData, WatchHistoryItem } from "./types";
+import { loadHistory, clearHistory } from "./history";  // ← Tambahan untuk riwayat
 
 const program = new Command();
 program.name("anichi").description("Anime streaming for CLI").version("2.6.2");
@@ -305,7 +308,11 @@ const handlePlay = async (slug: string, episodeStr: string, animeData?: any) => 
     const playerPath = config.player || config.playerPath;
     const args = config.playerArgs ? config.playerArgs.split(" ") : [];
 
-    const success = await playUrl(url, playerPath, args, false);
+    const success = await playUrl(url, playerPath, args, false, {
+      slug,
+      animeTitle: data.title,
+      episode: episode.eps ?? 0,
+    });
 
     return success;
   } catch (err: any) {
@@ -856,6 +863,47 @@ const handleFAQ = async () => {
   return await runHome();
 };
 
+const handleWatchHistory = async () => {
+  clearScreen();
+  showBanner();
+  createHeader("Riwayat Tontonan", theme.secondary);
+
+  const history = loadHistory();
+  printWatchHistory(history);
+  logger.br();
+
+  logger.muted("  Perintah:");
+  logger.muted("  • [nomor] - Putar ulang episode");
+  logger.muted("  • clear   - Hapus semua riwayat");
+  logger.muted("  • back / 0 - Kembali ke menu utama\n");
+
+  const answer = await ask("Perintah:");
+  const choice = answer.toLowerCase();
+
+  if (choice === "back" || choice === "0") {
+    return await runHome();
+  }
+
+  if (choice === "clear") {
+    clearHistory();
+    await new Promise((r) => setTimeout(r, 2000));
+    return await handleWatchHistory();
+  }
+
+  const index = parseInt(choice) - 1;
+  if (!isNaN(index) && index >= 0 && index < history.length) {
+    const item: WatchHistoryItem = history[index];
+    logger.info(`Memutar ulang: ${item.animeTitle} - Ep ${item.episode}`);
+    await handlePlay(item.slug, item.episode.toString());
+    await new Promise((r) => setTimeout(r, 2000));
+    return await handleWatchHistory();
+  } else {
+    logger.warn("Pilihan tidak valid");
+    await new Promise((r) => setTimeout(r, 1000));
+    return await handleWatchHistory();
+  }
+};
+
 const runHome = async () => {
   clearScreen();
   showBanner();
@@ -868,6 +916,7 @@ const runHome = async () => {
     "Search Anime",
     "Search by Genre",
     "Schedule Anime",
+    "History Anime",
     "FAQ",
   ]);
 
@@ -886,6 +935,8 @@ const runHome = async () => {
   } else if (answer === "6") {
     await handleSchedule();
   } else if (answer === "7") {
+    await handleWatchHistory();
+  } else if (answer === "8") {
     await handleFAQ();
   } else {
     logger.warn("Invalid choice");
