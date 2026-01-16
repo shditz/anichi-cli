@@ -1,6 +1,6 @@
-import { spawn } from "child_process";
+import {spawn} from "child_process";
 import open from "open";
-import { logger } from "./ui";
+import {logger} from "./ui";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -60,8 +60,8 @@ const findMpvOnLinux = (): string | null => {
 const commandExists = (cmd: string): boolean => {
   try {
     const check = process.platform === "win32" ? `where "${cmd}" 2>nul` : `command -v ${cmd}`;
-    const { execSync } = require("child_process");
-    execSync(check, { stdio: "pipe" });
+    const {execSync} = require("child_process");
+    execSync(check, {stdio: "pipe"});
     return true;
   } catch {
     return false;
@@ -95,7 +95,8 @@ const spawnPlayer = (player: string, args: string[]): Promise<boolean> => {
       stdio: "ignore",
       detached: true,
       shell: process.platform === "win32",
-      windowsHide: true,
+      // windowsHide: true,
+      env: process.env,
     });
 
     let resolved = false;
@@ -114,19 +115,6 @@ const spawnPlayer = (player: string, args: string[]): Promise<boolean> => {
         resolve(true);
       }
     });
-
-    setTimeout(() => {
-      if (!resolved) {
-        if (child.pid && !child.killed) {
-          if (child.unref) child.unref();
-          resolved = true;
-          resolve(true);
-        } else {
-          resolved = true;
-          reject(new Error("Player spawn timeout"));
-        }
-      }
-    }, 1500);
   });
 };
 
@@ -135,9 +123,20 @@ export const playUrl = async (
   customPlayer?: string,
   customArgs: string[] = [],
   noBrowser = false,
-  metadata?: { slug: string; animeTitle: string; episode: number }
+  metadata?: {slug: string; animeTitle: string; episode: number}
 ): Promise<boolean> => {
-  const args = customArgs.map((a) => (a.startsWith("--") || a.startsWith("-") ? a : `--${a}`));
+  const defaultArgs = [
+    "--fs",
+    "--no-border",
+    "--deband=no",
+    "--scale=ewa_lanczossharp",
+    "--cscale=ewa_lanczossharp",
+    "--tscale=oversample",
+  ];
+
+  const args = customArgs.length > 0 ? customArgs : defaultArgs;
+
+  const finalArgs = args.map((a) => (a.startsWith("--") || a.startsWith("-") ? a : `--${a}`));
 
   let playerPath = customPlayer || findPlayer();
 
@@ -152,7 +151,7 @@ export const playUrl = async (
       await open(url);
       await new Promise((r) => setTimeout(r, 2000));
       if (metadata) {
-        const { addToHistory } = await import("./history");
+        const {addToHistory} = await import("./history");
         addToHistory(metadata);
       }
       return true;
@@ -169,7 +168,7 @@ export const playUrl = async (
     await spawnPlayer(playerPath, [...args, url]);
     logger.success(`Streaming di MPV (${path.basename(playerPath)})`);
     if (metadata) {
-      const { addToHistory } = await import("./history");
+      const {addToHistory} = await import("./history");
       addToHistory(metadata);
     }
     return true;
@@ -181,7 +180,7 @@ export const playUrl = async (
       await open(url);
       await new Promise((r) => setTimeout(r, 2000));
       if (metadata) {
-        const { addToHistory } = await import("./history");
+        const {addToHistory} = await import("./history");
         addToHistory(metadata);
       }
       return true;

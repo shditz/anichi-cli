@@ -6,6 +6,7 @@ import {logger} from "./ui";
 
 const CONFIG_DIR = path.join(os.homedir(), ".config", "anichi");
 const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
+const CORRUPT_BACKUP = path.join(CONFIG_DIR, "config.corrupt.json");
 
 export const ensureConfigDir = (): void => {
   if (!fs.existsSync(CONFIG_DIR)) {
@@ -29,7 +30,13 @@ export const loadConfig = (): AppConfig => {
 
     return config;
   } catch (err) {
-    logger.warn("Corrupt config file found, resetting to default.");
+    try {
+      if (fs.existsSync(CONFIG_FILE)) {
+        fs.renameSync(CONFIG_FILE, CORRUPT_BACKUP);
+      }
+      fs.writeFileSync(CONFIG_FILE, JSON.stringify({}, null, 2));
+      logger.warn("Corrupt config file detected. Resetting to default settings.");
+    } catch (renameErr) {}
     return {};
   }
 };

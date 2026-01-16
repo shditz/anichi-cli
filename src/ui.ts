@@ -3,7 +3,7 @@ import boxen from "boxen";
 import gradient from "gradient-string";
 import figlet from "figlet";
 import Table from "cli-table3";
-import {ScheduleAnimeItem, WatchHistoryItem} from "./types";  // Tambah WatchHistoryItem jika belum
+import {ScheduleAnimeItem, WatchHistoryItem} from "./types";
 
 export const theme = {
   primary: "#00d9ff",
@@ -28,7 +28,7 @@ export const showBanner = () => {
     horizontalLayout: "fitted",
   });
   console.log(gradient.pastel.multiline(banner));
-  console.log(chalk.hex(theme.muted)("  v2.6.2  •  Streaming Anime CLI By ShDitz\n"));
+  console.log(chalk.hex(theme.muted)("  v2.8.0  •  Streaming Anime CLI By ShDitz\n"));
   console.log(chalk.hex(theme.muted)("  Butuh bantuan tentang Anichi? ketik 8 untuk 'FAQ'\n"));
 };
 
@@ -79,22 +79,18 @@ export const printAnimeList = (list: any[], isOngoing: boolean) => {
 
   list.forEach((anime, idx) => {
     const scoreColor =
-      anime.score && parseFloat(anime.score) >= 8.0
+      anime.rating && parseFloat(anime.rating) >= 8.0
         ? theme.success
-        : anime.score && parseFloat(anime.score) >= 6.0
+        : anime.rating && parseFloat(anime.rating) >= 6.0
         ? theme.warning
         : theme.muted;
 
     table.push([
       chalk.hex(theme.primary).bold((idx + 1).toString()),
       anime.title,
-      anime.episodes || "-",
-      isOngoing ? anime.releaseDay || "-" : anime.lastReleaseDate || "-",
-      isOngoing
-        ? anime.latestReleaseDate || "-"
-        : anime.score
-        ? chalk.hex(scoreColor)(anime.score)
-        : "-",
+      anime.episode || anime.total_episode || "-",
+      isOngoing ? anime.day || "-" : anime.date || "-",
+      isOngoing ? anime.date || "-" : anime.rating ? chalk.hex(scoreColor)(anime.rating) : "-",
     ]);
   });
 
@@ -107,11 +103,16 @@ export const printEpisodeList = (list: any[]) => {
     return;
   }
 
-  const sortedList = [...list].sort((a: any, b: any) => a.eps - b.eps);
+  const sortedList = [...list].sort((a, b) => {
+    const numA = parseInt(a.title.match(/(\d+)/)?.[0] || "0", 10);
+    const numB = parseInt(b.title.match(/(\d+)/)?.[0] || "0", 10);
+
+    return numA - numB;
+  });
 
   const table = new Table({
     head: [chalk.bold.white(" No"), chalk.bold.white("Episode")],
-    colWidths: [10, 20],
+    colWidths: [10, 35],
     wordWrap: true,
     style: {head: [], border: [theme.border]},
   });
@@ -119,7 +120,7 @@ export const printEpisodeList = (list: any[]) => {
   sortedList.forEach((ep, idx) => {
     table.push([
       chalk.hex(theme.primary).bold((idx + 1).toString().padStart(3)),
-      chalk.white(`Ep ${ep.eps.toString().padStart(4)}`),
+      chalk.white(ep.title),
     ]);
   });
 
@@ -144,22 +145,21 @@ export const showAnimeDetails = (data: any) => {
   metaTable.push(
     [chalk.hex(theme.secondary)("Judul"), data.title],
     [chalk.hex(theme.secondary)("Japanese"), data.japanese],
-    [chalk.hex(theme.secondary)("Score"), chalk.hex(theme.warning)(data.score)],
+    [chalk.hex(theme.secondary)("Score"), chalk.hex(theme.warning)(data.skor)],
     [chalk.hex(theme.secondary)("Status"), chalk.hex(theme.success)(data.status)],
-    [chalk.hex(theme.secondary)("Studio"), data.studios],
-    [chalk.hex(theme.secondary)("Tipe"), data.type],
-    [chalk.hex(theme.secondary)("Durasi"), data.duration],
-    [chalk.hex(theme.secondary)("Episode"), data.episodes],
-    [chalk.hex(theme.secondary)("Ditayangkan"), data.aired],
-    [chalk.hex(theme.secondary)("Produser"), data.producers],
-    [chalk.hex(theme.secondary)("Genre"), data.genreList.map((g: any) => g.title).join(", ")]
+    [chalk.hex(theme.secondary)("Studio"), data.studio],
+    [chalk.hex(theme.secondary)("Tipe"), data.tipe],
+    [chalk.hex(theme.secondary)("Durasi"), data.durasi],
+    [chalk.hex(theme.secondary)("Episode"), data.total_episode],
+    [chalk.hex(theme.secondary)("Ditayangkan"), data.tanggal_rilis],
+    [chalk.hex(theme.secondary)("Produser"), data.produser],
+    [chalk.hex(theme.secondary)("Genre"), data.genre.map((g: any) => g.name).join(", ")]
   );
 
   console.log(metaTable.toString());
   logger.br();
 
-  const synopsis = data.synopsis.paragraphs.join(" ");
-  const synopsisBox = boxen(chalk.white(synopsis), {
+  const synopsisBox = boxen(chalk.white(data.synopsis), {
     padding: 1,
     margin: 1,
     borderStyle: "single",
@@ -178,7 +178,7 @@ export const showAnimeDetails = (data: any) => {
 
 export const printQualityOptions = (qualities: any[]) => {
   const table = new Table({
-    head: [chalk.bold.white("No"), chalk.bold.white("Quality"), chalk.bold.white("Servers")],
+    head: [chalk.bold.white("No"), chalk.bold.white("Quality"), chalk.bold.white("Providers")],
     colWidths: [5, 15, 10],
     style: {head: [], border: [theme.border]},
   });
@@ -186,8 +186,8 @@ export const printQualityOptions = (qualities: any[]) => {
   qualities.forEach((q, idx) => {
     table.push([
       chalk.hex(theme.primary).bold(idx + 1),
-      chalk.white(q.title),
-      chalk.hex(theme.muted)(q.serverList.length),
+      chalk.white(q.quality),
+      chalk.hex(theme.muted)(q.providers.length),
     ]);
   });
 
@@ -214,16 +214,16 @@ export const printSearchResults = (list: any[]) => {
 
   list.forEach((anime, idx) => {
     const scoreColor =
-      anime.score && parseFloat(anime.score) >= 8.0
+      anime.rating && parseFloat(anime.rating) >= 8.0
         ? theme.success
-        : anime.score && parseFloat(anime.score) >= 6.0
+        : anime.rating && parseFloat(anime.rating) >= 6.0
         ? theme.warning
         : theme.muted;
     table.push([
       chalk.hex(theme.primary).bold((idx + 1).toString().padStart(2, "0")),
       anime.title,
       chalk.hex(theme.success)(anime.status),
-      chalk.hex(scoreColor)(anime.score || "-"),
+      chalk.hex(scoreColor)(anime.rating || "-"),
     ]);
   });
 
@@ -250,16 +250,16 @@ export const printGenreAnimeList = (list: any[]) => {
 
   list.forEach((anime, idx) => {
     const scoreColor =
-      anime.score && parseFloat(anime.score) >= 8.0
+      anime.rating && parseFloat(anime.rating) >= 8.0
         ? theme.success
-        : anime.score && parseFloat(anime.score) >= 6.0
+        : anime.rating && parseFloat(anime.rating) >= 6.0
         ? theme.warning
         : theme.muted;
     table.push([
       chalk.hex(theme.primary).bold((idx + 1).toString().padStart(2, "0")),
       anime.title,
-      anime.episodes || "-",
-      chalk.hex(scoreColor)(anime.score || "-"),
+      anime.episode || "-",
+      chalk.hex(scoreColor)(anime.rating || "-"),
     ]);
   });
 
@@ -291,7 +291,7 @@ export const printGenreList = (list: any[]) => {
         tableRow.push(
           chalk.hex(theme.primary).bold((idx + 1).toString().padStart(2, "0")) +
             ". " +
-            chalk.white(item.title)
+            chalk.white(item.name)
         );
       } else {
         tableRow.push("");
@@ -308,20 +308,16 @@ export const printPaginationControls = (
   currentTitle: string,
   showBack?: boolean
 ) => {
+  if (!pagination) return;
+
   logger.br();
-  logger.muted(
-    `  📚 ${currentTitle} | Page: ${chalk.white(pagination.currentPage)} / ${chalk.white(
-      pagination.totalPages
-    )}`
-  );
+  logger.muted(`  📚 ${currentTitle} | Page: ${chalk.white(pagination.current_page)}`);
 
   let controls = "";
-  if (pagination.hasPrevPage) {
+  if (pagination.current_page > 1) {
     controls += `${chalk.hex(theme.warning).bold("[P] Prev")}  `;
   }
-  if (pagination.hasNextPage) {
-    controls += `${chalk.hex(theme.success).bold("[N] Next")}  `;
-  }
+  controls += `${chalk.hex(theme.success).bold("[N] Next")}  `;
   if (showBack) {
     controls += `${chalk.hex(theme.error).bold("[B] Back")}`;
   }
@@ -394,8 +390,9 @@ export const printBatchProviders = (providers: any[]) => {
   });
 
   providers.forEach((p, idx) => {
+    const name = p.provider || p.title;
     const num = chalk.hex(theme.primary).bold(`[${idx + 1}]`);
-    table.push([num, p.title]);
+    table.push([num, name]);
   });
 
   console.log(table.toString());
@@ -410,7 +407,7 @@ export const printDownloadOptions = (downloads: any[]) => {
 
   downloads.forEach((dl, idx) => {
     const num = chalk.hex(theme.primary).bold(`[${idx + 1}]`);
-    table.push([num, dl.title, chalk.hex(theme.warning)(dl.size)]);
+    table.push([num, dl.resolution, chalk.hex(theme.warning)(dl.size)]);
   });
 
   console.log(table.toString());
@@ -489,7 +486,6 @@ export const printFAQ = () => {
   logger.muted(`  Ketik 'back' atau '0' untuk kembali.\n`);
 };
 
-// Tambahan fungsi printWatchHistory
 export const printWatchHistory = (items: WatchHistoryItem[]) => {
   if (items.length === 0) {
     const content = chalk.hex(theme.muted)("Belum ada riwayat tontonan.");
@@ -515,7 +511,7 @@ export const printWatchHistory = (items: WatchHistoryItem[]) => {
     ],
     colWidths: [5, 45, 10, 20],
     wordWrap: true,
-    style: { head: [], border: [theme.border] },
+    style: {head: [], border: [theme.border]},
   });
 
   items.forEach((item, idx) => {

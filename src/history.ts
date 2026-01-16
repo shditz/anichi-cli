@@ -1,9 +1,9 @@
 import fs from "fs";
 import path from "path";
 import os from "os";
-import { WatchHistoryItem } from "./types";
-import { ensureConfigDir } from "./config";
-import { logger } from "./ui";
+import {WatchHistoryItem} from "./types";
+import {ensureConfigDir} from "./config";
+import {logger} from "./ui";
 
 const HISTORY_FILE = path.join(os.homedir(), ".config", "anichi", "history.json");
 const MAX_ENTRIES = 100;
@@ -20,7 +20,6 @@ export const loadHistory = (): WatchHistoryItem[] => {
       logger.warn("File riwayat corrupt, reset ke kosong.");
       return [];
     }
-    // Sort descending by timestamp
     return (data as WatchHistoryItem[]).sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );

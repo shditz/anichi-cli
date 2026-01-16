@@ -16,10 +16,9 @@ import {
 } from "./types";
 import {logger} from "./ui";
 
-const BASE_URL = "https://www.sankavollerei.com/anime";
+const BASE_URL = "https://shivraapi.my.id/otd";
 const CACHE_TTL = 3600;
 const MAX_RETRIES = 3;
-
 const MIN_REQUEST_DELAY = 600;
 
 class ApiClient {
@@ -57,19 +56,16 @@ class ApiClient {
       try {
         const {data, status} = await this.client.get(url);
 
-        if (data.statusCode === 404) {
-          spinner.warn("Not found");
-          return data;
-        }
-
         if (status !== 200) throw new Error(`HTTP ${status}`);
 
-        if (data.ok === true || data.status === "success") {
+        if (data.meta && data.meta.status === true) {
           this.cache.set(url, data);
+          spinner.succeed();
+          return data;
+        } else {
+          spinner.warn(data.meta?.message || "Request failed");
+          return data;
         }
-
-        spinner.succeed();
-        return data;
       } catch (err: any) {
         if (attempt === MAX_RETRIES - 1) {
           spinner.fail();
@@ -84,40 +80,47 @@ class ApiClient {
   }
 
   async getHome() {
-    return this.request("/home");
+    return this.request("/");
   }
 
   async getOngoing(page: number = 1) {
-    return this.request(`/ongoing-anime?page=${page}`);
+    return this.request(`/ongoing?page=${page}`);
   }
 
   async getCompleted(page: number = 1) {
-    return this.request(`/complete-anime?page=${page}`);
+    return this.request(`/completed?page=${page}`);
   }
 
   async getAnime(slug: string) {
     return this.request(`/anime/${slug}`);
   }
+
   async getGenre() {
-    return this.request("/genre");
+    return this.request("/genres");
   }
+
   async getEpisode(slug: string) {
     return this.request(`/episode/${slug}`);
   }
+
   async getServer(id: string) {
-    return this.request(`/server/${id}`);
+    return {meta: {status: false}, data: {}};
   }
+
   async getBatch(slug: string) {
     return this.request(`/batch/${slug}`);
   }
+
   async getSearch(keyword: string) {
-    return this.request(`/search/${keyword}`);
+    return this.request(`/search?q=${encodeURIComponent(keyword)}`);
   }
+
   async getSchedule() {
-    return this.request(`/schedule`);
+    return this.request("/schedule");
   }
+
   async getGenreAnime(slug: string, page: number = 1) {
-    return this.request(`/genre/${slug}?page=${page}`);
+    return this.request(`/genres/${slug}?page=${page}`);
   }
 
   clearCache() {

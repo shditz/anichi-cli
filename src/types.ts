@@ -1,139 +1,119 @@
 export interface ApiResponse<T> {
-  status: string;
-  creator: string;
-  statusCode: number;
-  statusMessage?: string;
-  message?: string;
-  ok: boolean;
+  meta: {
+    status: boolean;
+    code: number;
+    message: string;
+    creator: string;
+    source: string;
+    timestamp: string;
+  };
   data: T;
-  pagination: any;
 }
 
 export interface PaginationData {
-  currentPage: number;
-  hasPrevPage: boolean;
-  prevPage: number | null;
-  hasNextPage: boolean;
-  nextPage: number | null;
-  totalPages: number;
+  current_page: number;
+  per_page: number;
 }
 
 export interface AnimeSummary {
   title: string;
-  poster: string;
-  episodes: number;
-  releaseDay?: string;
-  latestReleaseDate?: string;
-  lastReleaseDate?: string;
-  score?: string;
-  animeId: string;
-  href: string;
-  otakudesuUrl: string;
+  cover: string;
+  slug: string;
+  episode?: string;
+  total_episode?: string;
+  rating?: string;
+  day?: string;
+  date?: string;
+  status?: string;
+  url: string;
 }
 
 export interface HomeData {
-  ongoing: {
-    href: string;
-    otakudesuUrl: string;
-    animeList: AnimeSummary[];
-  };
-  completed: {
-    href: string;
-    otakudesuUrl: string;
-    animeList: AnimeSummary[];
-  };
+  info: string;
+  status: string;
 }
 
 export type HomeResponse = ApiResponse<HomeData>;
 
 export interface OngoingData {
-  animeList: AnimeSummary[];
+  list: AnimeSummary[];
   pagination: PaginationData;
 }
 
 export type OngoingResponse = ApiResponse<OngoingData>;
 
 export interface CompletedData {
-  animeList: AnimeSummary[];
+  list: AnimeSummary[];
   pagination: PaginationData;
 }
 
 export type CompletedResponse = ApiResponse<CompletedData>;
 
 export interface GenreItem {
-  title: string;
-  genreId: string;
-  href: string;
-  otakudesuUrl: string;
+  name: string;
+  slug: string;
+  url: string;
 }
 
 export interface GenreData {
-  genreList: GenreItem[];
+  list: GenreItem[];
 }
 
 export type GenreResponse = ApiResponse<GenreData>;
 
 export interface EpisodeItem {
   title: string;
-  eps: number;
+  slug: string;
+  url: string;
   date: string;
-  episodeId: string;
-  href: string;
-  otakudesuUrl: string;
 }
 
 export interface AnimeDetailData {
   title: string;
-  poster: string;
   japanese: string;
-  score: string;
-  producers: string;
-  type: string;
+  skor: string;
+  produser: string;
+  tipe: string;
   status: string;
-  episodes: number;
-  duration: string;
-  aired: string;
-  studios: string;
+  total_episode: string;
+  durasi: string;
+  tanggal_rilis: string;
+  studio: string;
+  genre: {name: string; url: string}[];
+  synopsis: string;
+  url: string;
   batch?: {
-    // Diubah menjadi opsional (?)
     title: string;
-    batchId: string;
-    href: string;
-    otakudesuUrl: string;
+    slug: string;
+    url: string;
+    date: string;
   };
-  synopsis: {
-    paragraphs: string[];
-    connections: {title: string; animeId: string; href: string; otakudesuUrl: string}[];
-  };
-  genreList: GenreItem[];
-  episodeList: EpisodeItem[];
-  recommendedAnimeList: AnimeSummary[];
+  episode_list: EpisodeItem[];
 }
 
 export type AnimeDetailResponse = ApiResponse<AnimeDetailData>;
 
-export interface ServerItem {
-  title: string;
-  serverId: string;
-  href: string;
+export interface Provider {
+  provider: string;
+  url: string;
 }
 
-export interface QualityItem {
-  title: string;
-  serverList: ServerItem[];
+export interface StreamQuality {
+  quality: string;
+  providers: Provider[];
 }
 
 export interface EpisodeData {
   title: string;
-  animeId: string;
-  releaseTime: string;
-  defaultStreamingUrl: string;
-  server: {
-    qualities: QualityItem[];
-  };
-  downloadUrl: any;
-  info: any;
-  episodeList: any;
+  url: string;
+  waktu_rilis: string;
+  defaultstreaming: string;
+  stream: StreamQuality[];
+  downloads: {
+    resolution: string;
+    size: string;
+    links: Provider[];
+  }[];
 }
 
 export type EpisodeResponse = ApiResponse<EpisodeData>;
@@ -144,24 +124,14 @@ export interface ServerData {
 
 export type ServerResponse = ApiResponse<ServerData>;
 
-export interface BatchUrlItem {
-  title: string;
-  url: string;
-}
-
-export interface BatchQualityItem {
-  title: string;
-  urls: BatchUrlItem[];
-}
-
-export interface BatchFormatItem {
-  title: string;
-  qualities: BatchQualityItem[];
-}
-
 export interface BatchData {
   title: string;
-  formats: BatchFormatItem[];
+  cover: string;
+  download_links: {
+    resolution: string;
+    size: string;
+    links: Provider[];
+  }[];
 }
 
 export type BatchResponse = ApiResponse<BatchData>;
@@ -176,60 +146,57 @@ export interface AppConfig {
 
 export interface SearchAnimeItem {
   title: string;
-  poster: string;
+  cover: string;
   status: string;
-  score: string;
-  animeId: string;
-  href: string;
-  otakudesuUrl: string;
-  genreList: GenreItem[];
+  rating: string;
+  slug: string;
+  url: string;
+  genre: string[];
 }
 
 export interface SearchData {
-  animeList: SearchAnimeItem[];
+  query: string;
+  result_count: number;
+  list: SearchAnimeItem[];
 }
 
 export type SearchResponse = ApiResponse<SearchData>;
 
 export interface ScheduleAnimeItem {
   title: string;
-  poster: string;
-  slug: string;
   url: string;
+  slug: string;
 }
 
-export interface SeasonItem {
-  day: string;
-  anime_list: ScheduleAnimeItem[];
+export interface ScheduleData {
+  [key: string]: ScheduleAnimeItem[];
 }
 
-export type ScheduleResponse = ApiResponse<SeasonItem[]>;
+export type ScheduleResponse = ApiResponse<ScheduleData>;
 
 export interface GenreAnimeItem {
   title: string;
-  poster: string;
+  cover: string;
   status: string;
-  score: string;
-  episodes: number;
-  animeId: string;
-  href: string;
-  otakudesuUrl: string;
-  genreList: GenreItem[];
+  rating: string;
+  episode: string;
+  slug: string;
+  url: string;
+  genre: {name: string; url: string}[];
 }
 
 export interface GenreAnimeData {
-  animeList: GenreAnimeItem[];
+  list: GenreAnimeItem[];
   pagination: PaginationData;
 }
 
 export type GenreAnimeResponse = ApiResponse<GenreAnimeData>;
 
-// Tambahan untuk riwayat
 export interface WatchHistoryItem {
   animeTitle: string;
-  slug: string; // animeId/slug untuk putar ulang
+  slug: string;
   episode: number;
-  timestamp: string; // new Date().toISOString()
+  timestamp: string;
 }
 
 export const theme = {

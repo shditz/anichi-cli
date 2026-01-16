@@ -1,12 +1,12 @@
 import chalk from "chalk";
 import ora from "ora";
-import { Command } from "commander";
+import {Command} from "commander";
 import readline from "readline";
 import open from "open";
 import api from "./api";
-import { playUrl } from "./player";
-import { loadConfig, saveConfig, getConfigPath } from "./config";
-import { theme } from "./ui";
+import {playUrl} from "./player";
+import {loadConfig, saveConfig, getConfigPath} from "./config";
+import {theme} from "./ui";
 import {
   clearScreen,
   showBanner,
@@ -18,8 +18,6 @@ import {
   showAnimeDetails,
   printQualityOptions,
   printDownloadOptions,
-  printBatchFormats,
-  printBatchQualities,
   printBatchProviders,
   printSearchResults,
   printSchedule,
@@ -27,13 +25,13 @@ import {
   printGenreAnimeList,
   printPaginationControls,
   printFAQ,
-  printWatchHistory,           // ← Tambahan untuk riwayat
+  printWatchHistory,
 } from "./ui";
-import { AnimeDetailData, WatchHistoryItem } from "./types";
-import { loadHistory, clearHistory } from "./history";  // ← Tambahan untuk riwayat
+import {AnimeDetailData, WatchHistoryItem, BatchData} from "./types";
+import {loadHistory, clearHistory} from "./history";
 
 const program = new Command();
-program.name("anichi").description("Anime streaming for CLI").version("2.6.2");
+program.name("anichi").description("Anime streaming for CLI").version("2.8.0");
 
 const ask = (query: string): Promise<string> => {
   const rl = readline.createInterface({
@@ -50,96 +48,65 @@ const ask = (query: string): Promise<string> => {
 
 const resolveEpisode = (eps: number | "latest", list: any[]) => {
   if (eps === "latest") return list[0];
-  return list.find((e) => e.eps === eps || e.episode === eps);
+
+  const targetStr = eps.toString();
+  return list.find((e) => e.title.includes(`Episode ${targetStr}`));
 };
 
-const tryGetServer = async (serverId: string): Promise<string | null> => {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(`https://www.sankavollerei.com/anime/server/${serverId}`, {
-      signal: controller.signal,
-    }).then((r) => r.json());
-    clearTimeout(timeoutId);
-    if (res.status === "success" && res.data?.url) {
-      return res.data.url;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-};
-
-const handleBatch = async (animeId: string, batchData: any) => {
+const handleBatch = async (animeSlug: string, batchData: any) => {
   clearScreen();
 
-  if (!batchData?.downloadUrl?.formats || batchData.downloadUrl.formats.length === 0) {
+  if (!batchData?.download_links || batchData.download_links.length === 0) {
     logger.error("No batch download links available");
     await new Promise((r) => setTimeout(r, 2000));
     return;
   }
 
-  const formats = batchData.downloadUrl.formats;
+  const links = batchData.download_links;
 
-  createHeader("Download Batch", "#00ff9f");
-  printBatchFormats(formats);
+  const tableOptions = links.map((l: BatchData["download_links"][number], i: number) => ({
+    index: i,
+    title: `${l.resolution} - ${l.size}`,
+  }));
+
+  printBatchProviders(tableOptions);
   logger.br();
-  logger.muted("  Pilih format (1-" + formats.length + ") atau 'back'\n");
-
-  const ansFormat = await ask("Format:");
-  const fmtChoice = ansFormat.toLowerCase();
-
-  if (fmtChoice === "back" || fmtChoice === "0") return;
-
-  const fIndex = parseInt(fmtChoice) - 1;
-  if (isNaN(fIndex) || fIndex < 0 || fIndex >= formats.length) {
-    logger.warn("Invalid selection");
-    await new Promise((r) => setTimeout(r, 1000));
-    return await handleBatch(animeId, batchData);
-  }
-
-  const selectedFormat = formats[fIndex];
-
-  clearScreen();
-  createHeader(`Pilih Quality (${selectedFormat.title})`, "#00ff9f");
-  printBatchQualities(selectedFormat.qualities);
-  logger.br();
-  logger.muted("  Pilih kualitas (1-" + selectedFormat.qualities.length + ") atau 'back'\n");
+  logger.muted("  Pilih kualitas (1-" + links.length + ") atau 'back'\n");
 
   const ansQuality = await ask("Kualitas:");
   const qChoice = ansQuality.toLowerCase();
 
-  if (qChoice === "back" || qChoice === "0") return await handleBatch(animeId, batchData);
+  if (qChoice === "back" || qChoice === "0") return;
 
   const qIndex = parseInt(qChoice) - 1;
-  if (isNaN(qIndex) || qIndex < 0 || qIndex >= selectedFormat.qualities.length) {
+  if (isNaN(qIndex) || qIndex < 0 || qIndex >= links.length) {
     logger.warn("Invalid selection");
     await new Promise((r) => setTimeout(r, 1000));
-    return await handleBatch(animeId, batchData);
+    return await handleBatch(animeSlug, batchData);
   }
 
-  const selectedQuality = selectedFormat.qualities[qIndex];
+  const selectedQuality = links[qIndex];
 
   clearScreen();
-  createHeader(`Pilih Provider (${selectedQuality.title})`, "#00ff9f");
-  printBatchProviders(selectedQuality.urls);
+  createHeader(`Pilih Provider (${selectedQuality.resolution})`, "#00ff9f");
+  printBatchProviders(selectedQuality.links);
   logger.br();
-  logger.muted("  Pilih provider (1-" + selectedQuality.urls.length + ") atau 'back'\n");
+  logger.muted("  Pilih provider (1-" + selectedQuality.links.length + ") atau 'back'\n");
 
   const ansProv = await ask("Provider:");
   const pChoice = ansProv.toLowerCase();
 
-  if (pChoice === "back" || pChoice === "0") return await handleBatch(animeId, batchData);
+  if (pChoice === "back" || pChoice === "0") return await handleBatch(animeSlug, batchData);
 
-  const pIndex = parseInt(pChoice) - 1;
-  if (isNaN(pIndex) || pIndex < 0 || pIndex >= selectedQuality.urls.length) {
+  const pIndex = parseInt(ansProv) - 1;
+  if (isNaN(pIndex) || pIndex < 0 || pIndex >= selectedQuality.links.length) {
     logger.warn("Invalid selection");
     await new Promise((r) => setTimeout(r, 1000));
-    return await handleBatch(animeId, batchData);
+    return await handleBatch(animeSlug, batchData);
   }
 
-  const provider = selectedQuality.urls[pIndex];
-  logger.info(`Opening ${provider.title}...`);
+  const provider = selectedQuality.links[pIndex];
+  logger.info(`Opening ${provider.provider}...`);
   await open(provider.url);
   await new Promise((r) => setTimeout(r, 2000));
 };
@@ -167,7 +134,7 @@ const selectQuality = async (qualities: any[]): Promise<any | null> => {
 };
 
 const handleDownload = async (episodeData: any) => {
-  const downloads = episodeData.downloadUrl?.qualities || [];
+  const downloads = episodeData.downloads || [];
 
   if (downloads.length === 0) {
     logger.error("No download links available");
@@ -195,15 +162,15 @@ const handleDownload = async (episodeData: any) => {
   const selected = downloads[qIndex];
 
   clearScreen();
-  createHeader(`Download ${selected.title} (${selected.size})`, "#00ff9f");
+  createHeader(`Download ${selected.resolution} (${selected.size})`, "#00ff9f");
 
-  selected.urls.forEach((provider: any, idx: number) => {
+  selected.links.forEach((provider: any, idx: number) => {
     const num = chalk.hex("#00ff9f").bold(`  [${idx + 1}]`);
-    console.log(`${num} ${chalk.white(provider.title)}`);
+    console.log(`${num} ${chalk.white(provider.provider)}`);
   });
 
   logger.br();
-  logger.muted("  Pilih provider (1-" + selected.urls.length + ") atau 'back'\n");
+  logger.muted("  Pilih provider (1-" + selected.links.length + ") atau 'back'\n");
 
   const provAnswer = await ask("Provider:");
   const provChoice = provAnswer.toLowerCase();
@@ -211,16 +178,24 @@ const handleDownload = async (episodeData: any) => {
   if (provChoice === "back" || provChoice === "0") return await handleDownload(episodeData);
 
   const pIndex = parseInt(provAnswer) - 1;
-  if (isNaN(pIndex) || pIndex < 0 || pIndex >= selected.urls.length) {
+  if (isNaN(pIndex) || pIndex < 0 || pIndex >= selected.links.length) {
     logger.warn("Invalid selection");
     await new Promise((r) => setTimeout(r, 1000));
     return await handleDownload(episodeData);
   }
 
-  const provider = selected.urls[pIndex];
-  logger.info(`Opening ${provider.title}...`);
+  const provider = selected.links[pIndex];
+  logger.info(`Opening ${provider.provider}...`);
   await open(provider.url);
   await new Promise((r) => setTimeout(r, 2000));
+};
+
+const sortQuality = (a: any, b: any) => {
+  const getResValue = (str: string) => {
+    const match = str.match(/\d+/);
+    return match ? parseInt(match[0], 10) : 0;
+  };
+  return getResValue(a.quality) - getResValue(b.quality);
 };
 
 const handlePlay = async (slug: string, episodeStr: string, animeData?: any) => {
@@ -236,7 +211,7 @@ const handlePlay = async (slug: string, episodeStr: string, animeData?: any) => 
     }
 
     const epsNum = episodeStr === "latest" ? "latest" : parseInt(episodeStr, 10);
-    const episode = resolveEpisode(epsNum, data.episodeList);
+    const episode = resolveEpisode(epsNum, data.episode_list);
 
     if (!episode) {
       logger.error(`Episode ${episodeStr} not found`);
@@ -244,9 +219,9 @@ const handlePlay = async (slug: string, episodeStr: string, animeData?: any) => 
     }
 
     let epRes: any;
-    epRes = await api.getEpisode(episode.episodeId);
+    epRes = await api.getEpisode(episode.slug);
 
-    if ((!epRes.ok && epRes.status !== "success") || !epRes.data) {
+    if (!epRes.meta.status || !epRes.data) {
       logger.error("Failed to fetch episode data");
       return false;
     }
@@ -254,8 +229,8 @@ const handlePlay = async (slug: string, episodeStr: string, animeData?: any) => 
     let qualities: any[] = [];
     let defaultUrl = "";
 
-    qualities = epRes.data.server?.qualities || [];
-    defaultUrl = epRes.data.defaultStreamingUrl || "";
+    qualities = epRes.data.stream || [];
+    defaultUrl = epRes.data.defaultstreaming || "";
 
     if (qualities.length === 0) {
       logger.warn("No streaming qualities available");
@@ -267,29 +242,25 @@ const handlePlay = async (slug: string, episodeStr: string, animeData?: any) => 
       return false;
     }
 
+    qualities.sort(sortQuality);
+
     const selectedQuality = await selectQuality(qualities);
     if (!selectedQuality) return false;
 
     clearScreen();
     logger.info(`Playing: ${episode.title}`);
-    logger.info(`Quality: ${selectedQuality.title}`);
+    logger.info(`Quality: ${selectedQuality.quality}`);
 
     let url: string | null = null;
 
-    for (const server of selectedQuality.serverList) {
-      logger.info(`Trying ${server.title}...`);
-      url = await tryGetServer(server.serverId);
-      if (url) {
-        if (url.includes("filedon.co") || url.includes("vidhide")) {
-          logger.warn(`${server.title} unsupported (Embed detected), skipping...`);
-          continue;
-        }
-        break;
-      }
+    if (selectedQuality.providers && selectedQuality.providers.length > 0) {
+      const provider = selectedQuality.providers[0];
+      url = provider.url;
+      logger.info(`Using provider: ${provider.provider}`);
     }
 
     if (!url) {
-      logger.warn("No working server found, using default...");
+      logger.warn("No working provider found, using default...");
       url = defaultUrl;
     }
 
@@ -308,10 +279,14 @@ const handlePlay = async (slug: string, episodeStr: string, animeData?: any) => 
     const playerPath = config.player || config.playerPath;
     const args = config.playerArgs ? config.playerArgs.split(" ") : [];
 
+    let episodeNum = 0;
+    const match = episode.title.match(/\d+/);
+    if (match) episodeNum = parseInt(match[0]);
+
     const success = await playUrl(url, playerPath, args, false, {
       slug,
       animeTitle: data.title,
-      episode: episode.eps ?? 0,
+      episode: episodeNum,
     });
 
     return success;
@@ -325,7 +300,7 @@ const showEpisodeMenu = async (slug: string, data: any) => {
   clearScreen();
   showAnimeDetails(data);
   createHeader("Episodes", "#ff6b9d");
-  printEpisodeList(data.episodeList);
+  printEpisodeList(data.episode_list);
   logger.br();
 
   logger.muted("  Perintah:");
@@ -346,11 +321,11 @@ const showEpisodeMenu = async (slug: string, data: any) => {
       return await showEpisodeMenu(slug, data);
     }
 
-    const batchId = data.batch.batchId;
+    const batchSlug = data.batch.slug;
     const spinner = ora("Fetching batch info...").start();
     let res: any;
     try {
-      res = await api.getBatch(batchId);
+      res = await api.getBatch(batchSlug);
     } catch (err) {
       spinner.fail();
       logger.error("Failed to fetch batch info (Network Error)");
@@ -359,7 +334,12 @@ const showEpisodeMenu = async (slug: string, data: any) => {
     }
     spinner.stop();
 
-    if (res.ok && res.data && res.data.downloadUrl && res.data.downloadUrl.formats.length > 0) {
+    if (
+      res.meta.status &&
+      res.data &&
+      res.data.download_links &&
+      res.data.download_links.length > 0
+    ) {
       await handleBatch(slug, res.data);
       return await showEpisodeMenu(slug, data);
     } else {
@@ -372,7 +352,7 @@ const showEpisodeMenu = async (slug: string, data: any) => {
   if (choice === "d" || choice === "download") {
     clearScreen();
     createHeader("Pilih Episode untuk Download", "#00ff9f");
-    printEpisodeList(data.episodeList);
+    printEpisodeList(data.episode_list);
     logger.br();
     logger.muted("  Ketik nomor episode atau 'back'\n");
 
@@ -382,12 +362,12 @@ const showEpisodeMenu = async (slug: string, data: any) => {
     if (epChoice !== "back" && epChoice !== "0") {
       const epNum = parseInt(epAnswer);
       if (!isNaN(epNum) || epChoice === "latest") {
-        const episode = resolveEpisode(epChoice === "latest" ? "latest" : epNum, data.episodeList);
+        const episode = resolveEpisode(epChoice === "latest" ? "latest" : epNum, data.episode_list);
         if (episode) {
           let epRes: any;
-          epRes = await api.getEpisode(episode.episodeId);
+          epRes = await api.getEpisode(episode.slug);
 
-          if (epRes.ok && epRes.data) {
+          if (epRes.meta.status && epRes.data) {
             await handleDownload(epRes.data);
           }
         }
@@ -421,10 +401,10 @@ const handlePopularMenu = async (currentPage: number) => {
     return await runHome();
   }
 
-  if (res.ok && res.data && res.data.animeList) {
-    const popularList = [...res.data.animeList].sort((a: any, b: any) => {
-      const scoreA = parseFloat(a.score) || 0;
-      const scoreB = parseFloat(b.score) || 0;
+  if (res.meta.status && res.data && res.data.list) {
+    const popularList = [...res.data.list].sort((a: any, b: any) => {
+      const scoreA = parseFloat(a.rating) || 0;
+      const scoreB = parseFloat(b.rating) || 0;
       return scoreB - scoreA;
     });
 
@@ -432,7 +412,7 @@ const handlePopularMenu = async (currentPage: number) => {
     createHeader("Anime Populer", "#00d9ff");
     printAnimeList(popularList, false);
 
-    printPaginationControls(res.pagination, "Anime Populer", true);
+    printPaginationControls(res.data.pagination, "Anime Populer", true);
 
     const answer = await ask("Perintah:");
     const choice = answer.toLowerCase();
@@ -442,26 +422,18 @@ const handlePopularMenu = async (currentPage: number) => {
     }
 
     if (choice === "n" || choice === "next") {
-      if (res.pagination.hasNextPage) {
-        return await handlePopularMenu(res.pagination.nextPage);
-      } else {
-        logger.warn("No next page available");
-        return await handlePopularMenu(currentPage);
-      }
+      return await handlePopularMenu(currentPage + 1);
     }
 
     if (choice === "p" || choice === "prev") {
-      if (res.pagination.hasPrevPage) {
-        return await handlePopularMenu(res.pagination.prevPage);
-      } else {
-        logger.warn("No previous page available");
-        return await handlePopularMenu(currentPage);
-      }
+      if (currentPage > 1) return await handlePopularMenu(currentPage - 1);
+      logger.warn("No previous page available");
+      return await handlePopularMenu(currentPage);
     }
 
     const index = parseInt(choice) - 1;
     if (!isNaN(index) && index >= 0 && index < popularList.length) {
-      await showAnimeDetail(popularList[index].animeId);
+      await showAnimeDetail(popularList[index].slug);
       return await handlePopularMenu(currentPage);
     } else {
       logger.warn("Invalid selection");
@@ -496,12 +468,12 @@ const handleOngoingMenu = async (currentPage: number) => {
     return await runHome();
   }
 
-  if (res.ok && res.data && res.data.animeList) {
+  if (res.meta.status && res.data && res.data.list) {
     clearScreen();
     createHeader("Ongoing Anime", "#00d9ff");
-    printAnimeList(res.data.animeList, true);
+    printAnimeList(res.data.list, true);
 
-    printPaginationControls(res.pagination, "Ongoing Anime", true);
+    printPaginationControls(res.data.pagination, "Ongoing Anime", true);
 
     const answer = await ask("Perintah:");
     const choice = answer.toLowerCase();
@@ -511,26 +483,18 @@ const handleOngoingMenu = async (currentPage: number) => {
     }
 
     if (choice === "n" || choice === "next") {
-      if (res.pagination.hasNextPage) {
-        return await handleOngoingMenu(res.pagination.nextPage);
-      } else {
-        logger.warn("No next page available");
-        return await handleOngoingMenu(currentPage);
-      }
+      return await handleOngoingMenu(currentPage + 1);
     }
 
     if (choice === "p" || choice === "prev") {
-      if (res.pagination.hasPrevPage) {
-        return await handleOngoingMenu(res.pagination.prevPage);
-      } else {
-        logger.warn("No previous page available");
-        return await handleOngoingMenu(currentPage);
-      }
+      if (currentPage > 1) return await handleOngoingMenu(currentPage - 1);
+      logger.warn("No previous page available");
+      return await handleOngoingMenu(currentPage);
     }
 
     const index = parseInt(choice) - 1;
-    if (!isNaN(index) && index >= 0 && index < res.data.animeList.length) {
-      await showAnimeDetail(res.data.animeList[index].animeId);
+    if (!isNaN(index) && index >= 0 && index < res.data.list.length) {
+      await showAnimeDetail(res.data.list[index].slug);
       return await handleOngoingMenu(currentPage);
     } else {
       logger.warn("Invalid selection");
@@ -556,12 +520,12 @@ const handleCompletedMenu = async (currentPage: number) => {
     return await runHome();
   }
 
-  if (res.ok && res.data && res.data.animeList) {
+  if (res.meta.status && res.data && res.data.list) {
     clearScreen();
     createHeader("Completed Anime", "#00d9ff");
-    printAnimeList(res.data.animeList, false);
+    printAnimeList(res.data.list, false);
 
-    printPaginationControls(res.pagination, "Completed Anime", true);
+    printPaginationControls(res.data.pagination, "Completed Anime", true);
 
     const answer = await ask("Perintah:");
     const choice = answer.toLowerCase();
@@ -571,26 +535,18 @@ const handleCompletedMenu = async (currentPage: number) => {
     }
 
     if (choice === "n" || choice === "next") {
-      if (res.pagination.hasNextPage) {
-        return await handleCompletedMenu(res.pagination.nextPage);
-      } else {
-        logger.warn("No next page available");
-        return await handleCompletedMenu(currentPage);
-      }
+      return await handleCompletedMenu(currentPage + 1);
     }
 
     if (choice === "p" || choice === "prev") {
-      if (res.pagination.hasPrevPage) {
-        return await handleCompletedMenu(res.pagination.prevPage);
-      } else {
-        logger.warn("No previous page available");
-        return await handleCompletedMenu(currentPage);
-      }
+      if (currentPage > 1) return await handleCompletedMenu(currentPage - 1);
+      logger.warn("No previous page available");
+      return await handleCompletedMenu(currentPage);
     }
 
     const index = parseInt(choice) - 1;
-    if (!isNaN(index) && index >= 0 && index < res.data.animeList.length) {
-      await showAnimeDetail(res.data.animeList[index].animeId);
+    if (!isNaN(index) && index >= 0 && index < res.data.list.length) {
+      await showAnimeDetail(res.data.list[index].slug);
       return await handleCompletedMenu(currentPage);
     } else {
       logger.warn("Invalid selection");
@@ -625,12 +581,12 @@ const handleSearch = async () => {
     return await runHome();
   }
 
-  if (res.ok && res.data && res.data.animeList && res.data.animeList.length > 0) {
+  if (res.meta.status && res.data && res.data.list && res.data.list.length > 0) {
     clearScreen();
     createHeader("Hasil Search", "#ff6b9d");
-    printSearchResults(res.data.animeList);
+    printSearchResults(res.data.list);
     logger.br();
-    logger.muted(`  Pilih anime (1-${res.data.animeList.length}) atau 'back'\n`);
+    logger.muted(`  Pilih anime (1-${res.data.list.length}) atau 'back'\n`);
 
     const answer = await ask("Pilih:");
     const choice = answer.toLowerCase();
@@ -638,8 +594,8 @@ const handleSearch = async () => {
     if (choice === "back" || choice === "0") return await runHome();
 
     const index = parseInt(choice) - 1;
-    if (!isNaN(index) && index >= 0 && index < res.data.animeList.length) {
-      await showAnimeDetail(res.data.animeList[index].animeId);
+    if (!isNaN(index) && index >= 0 && index < res.data.list.length) {
+      await showAnimeDetail(res.data.list[index].slug);
     } else {
       logger.warn("Invalid selection");
       await new Promise((r) => setTimeout(r, 1000));
@@ -669,13 +625,13 @@ const handleGenreMenu = async () => {
     return await runHome();
   }
 
-  if (res.ok && res.data && res.data.genreList) {
+  if (res.meta.status && res.data && res.data.list) {
     clearScreen();
     createHeader("Pilih Genre", "#ffaa00");
     logger.br();
-    printGenreList(res.data.genreList);
+    printGenreList(res.data.list);
     logger.br();
-    logger.muted(`  Pilih genre (1-${res.data.genreList.length}) atau 'back'\n`);
+    logger.muted(`  Pilih genre (1-${res.data.list.length}) atau 'back'\n`);
 
     const answer = await ask("Pilih:");
     const choice = answer.toLowerCase();
@@ -683,9 +639,9 @@ const handleGenreMenu = async () => {
     if (choice === "back" || choice === "0") return await runHome();
 
     const index = parseInt(choice) - 1;
-    if (!isNaN(index) && index >= 0 && index < res.data.genreList.length) {
-      const selectedGenre = res.data.genreList[index];
-      await handleGenreAnimeList(selectedGenre.title, selectedGenre.genreId, 1);
+    if (!isNaN(index) && index >= 0 && index < res.data.list.length) {
+      const selectedGenre = res.data.list[index];
+      await handleGenreAnimeList(selectedGenre.name, selectedGenre.slug, 1);
     } else {
       logger.warn("Invalid selection");
       return await handleGenreMenu();
@@ -710,13 +666,13 @@ const handleGenreAnimeList = async (genreTitle: string, genreSlug: string, curre
     return await handleGenreMenu();
   }
 
-  if (res.ok && res.data && res.data.animeList) {
+  if (res.meta.status && res.data && res.data.list) {
     clearScreen();
     createHeader(`Genre: ${genreTitle}`, "#ffaa00");
     logger.br();
-    printGenreAnimeList(res.data.animeList);
+    printGenreAnimeList(res.data.list);
 
-    printPaginationControls(res.pagination, `: ${genreTitle}`, true);
+    printPaginationControls(res.data.pagination, `: ${genreTitle}`, true);
 
     const answer = await ask("Perintah:");
     const choice = answer.toLowerCase();
@@ -726,26 +682,19 @@ const handleGenreAnimeList = async (genreTitle: string, genreSlug: string, curre
     }
 
     if (choice === "n" || choice === "next") {
-      if (res.pagination.hasNextPage) {
-        return await handleGenreAnimeList(genreTitle, genreSlug, res.pagination.nextPage);
-      } else {
-        logger.warn("No next page available");
-        return await handleGenreAnimeList(genreTitle, genreSlug, currentPage);
-      }
+      return await handleGenreAnimeList(genreTitle, genreSlug, currentPage + 1);
     }
 
     if (choice === "p" || choice === "prev") {
-      if (res.pagination.hasPrevPage) {
-        return await handleGenreAnimeList(genreTitle, genreSlug, res.pagination.prevPage);
-      } else {
-        logger.warn("No previous page available");
-        return await handleGenreAnimeList(genreTitle, genreSlug, currentPage);
-      }
+      if (currentPage > 1)
+        return await handleGenreAnimeList(genreTitle, genreSlug, currentPage - 1);
+      logger.warn("No previous page available");
+      return await handleGenreAnimeList(genreTitle, genreSlug, currentPage);
     }
 
     const index = parseInt(choice) - 1;
-    if (!isNaN(index) && index >= 0 && index < res.data.animeList.length) {
-      await showAnimeDetail(res.data.animeList[index].animeId);
+    if (!isNaN(index) && index >= 0 && index < res.data.list.length) {
+      await showAnimeDetail(res.data.list[index].slug);
     } else {
       logger.warn("Invalid selection");
       return await handleGenreAnimeList(genreTitle, genreSlug, currentPage);
@@ -770,13 +719,19 @@ const handleSchedule = async () => {
     return await runHome();
   }
 
-  if (res && res.status === "success" && res.data) {
+  if (res.meta.status && res.data) {
+    // Transform object keys to array for UI
+    const scheduleList = Object.keys(res.data).map((key) => ({
+      day: key.charAt(0).toUpperCase() + key.slice(1), // Capitalize
+      anime_list: res.data[key],
+    }));
+
     clearScreen();
     createHeader("Anime Schedule", "#ffaa00");
-    printSchedule(res.data);
+    printSchedule(scheduleList);
     logger.br();
     logger.muted("  Perintah:");
-    logger.muted("  • [nomor] - Pilih hari (1-Minggu)");
+    logger.muted("  • [nomor] - Pilih hari (1-7)");
     logger.muted("  • [hari] - Filter berdasarkan hari (e.g. Senin, Selasa)");
     logger.muted("  • 'back' - Kembali ke home\n");
 
@@ -787,8 +742,8 @@ const handleSchedule = async () => {
 
     const index = parseInt(choice);
 
-    if (!isNaN(index) && index >= 1 && index <= res.data.length) {
-      const selectedDay = res.data[index - 1];
+    if (!isNaN(index) && index >= 1 && index <= scheduleList.length) {
+      const selectedDay = scheduleList[index - 1];
 
       clearScreen();
       createHeader(`Schedule: ${selectedDay.day}`, "#ffaa00");
@@ -813,7 +768,7 @@ const handleSchedule = async () => {
       }
     }
 
-    const dayData = res.data.find((d: any) => d.day.toLowerCase() === choice);
+    const dayData = scheduleList.find((d: any) => d.day.toLowerCase() === choice);
 
     if (dayData) {
       clearScreen();
