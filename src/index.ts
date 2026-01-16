@@ -31,7 +31,7 @@ import {AnimeDetailData, WatchHistoryItem, BatchData} from "./types";
 import {loadHistory, clearHistory} from "./history";
 
 const program = new Command();
-program.name("anichi").description("Anime streaming for CLI").version("2.8.0");
+program.name("anichi").description("Anime streaming for CLI").version("2.8.1");
 
 const ask = (query: string): Promise<string> => {
   const rl = readline.createInterface({
