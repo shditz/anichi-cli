@@ -3,9 +3,9 @@ import boxen from "boxen";
 import gradient from "gradient-string";
 import figlet from "figlet";
 import Table from "cli-table3";
-import {ScheduleAnimeItem} from "./types";
+import {ScheduleAnimeItem, WatchHistoryItem} from "./types";  // Tambah WatchHistoryItem jika belum
 
-const theme = {
+export const theme = {
   primary: "#00d9ff",
   secondary: "#ff6b9d",
   success: "#00ff9f",
@@ -29,7 +29,7 @@ export const showBanner = () => {
   });
   console.log(gradient.pastel.multiline(banner));
   console.log(chalk.hex(theme.muted)("  v2.6.2  •  Streaming Anime CLI By ShDitz\n"));
-  console.log(chalk.hex(theme.muted)("  Butuh bantuan tentang Anichi? ketik 7 untuk 'FAQ'\n"));
+  console.log(chalk.hex(theme.muted)("  Butuh bantuan tentang Anichi? ketik 8 untuk 'FAQ'\n"));
 };
 
 export const createBox = (content: string, title?: string, color: string = theme.primary) => {
@@ -487,4 +487,50 @@ export const printFAQ = () => {
   });
 
   logger.muted(`  Ketik 'back' atau '0' untuk kembali.\n`);
+};
+
+// Tambahan fungsi printWatchHistory
+export const printWatchHistory = (items: WatchHistoryItem[]) => {
+  if (items.length === 0) {
+    const content = chalk.hex(theme.muted)("Belum ada riwayat tontonan.");
+    console.log(
+      boxen(content, {
+        padding: 1,
+        margin: 1,
+        borderStyle: "round",
+        borderColor: theme.muted,
+        title: "Riwayat Kosong",
+        titleAlignment: "center",
+      })
+    );
+    return;
+  }
+
+  const table = new Table({
+    head: [
+      chalk.bold.white("No"),
+      chalk.bold.white("Judul Anime"),
+      chalk.bold.white("Episode"),
+      chalk.bold.white("Waktu"),
+    ],
+    colWidths: [5, 45, 10, 20],
+    wordWrap: true,
+    style: { head: [], border: [theme.border] },
+  });
+
+  items.forEach((item, idx) => {
+    const date = new Date(item.timestamp);
+    const waktu = date.toLocaleString("id-ID", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+    table.push([
+      chalk.hex(theme.primary).bold((idx + 1).toString()),
+      item.animeTitle,
+      `Ep ${item.episode}`,
+      chalk.hex(theme.info)(waktu),
+    ]);
+  });
+
+  console.log(table.toString());
 };

@@ -1,6 +1,6 @@
-import {spawn} from "child_process";
+import { spawn } from "child_process";
 import open from "open";
-import {logger} from "./ui";
+import { logger } from "./ui";
 import fs from "fs";
 import path from "path";
 import os from "os";
@@ -60,8 +60,8 @@ const findMpvOnLinux = (): string | null => {
 const commandExists = (cmd: string): boolean => {
   try {
     const check = process.platform === "win32" ? `where "${cmd}" 2>nul` : `command -v ${cmd}`;
-    const {execSync} = require("child_process");
-    execSync(check, {stdio: "pipe"});
+    const { execSync } = require("child_process");
+    execSync(check, { stdio: "pipe" });
     return true;
   } catch {
     return false;
@@ -134,7 +134,8 @@ export const playUrl = async (
   url: string,
   customPlayer?: string,
   customArgs: string[] = [],
-  noBrowser = false
+  noBrowser = false,
+  metadata?: { slug: string; animeTitle: string; episode: number }
 ): Promise<boolean> => {
   const args = customArgs.map((a) => (a.startsWith("--") || a.startsWith("-") ? a : `--${a}`));
 
@@ -150,6 +151,10 @@ export const playUrl = async (
       logger.info("Membuka di Browser sebagai fallback...");
       await open(url);
       await new Promise((r) => setTimeout(r, 2000));
+      if (metadata) {
+        const { addToHistory } = await import("./history");
+        addToHistory(metadata);
+      }
       return true;
     }
     return false;
@@ -163,6 +168,10 @@ export const playUrl = async (
   try {
     await spawnPlayer(playerPath, [...args, url]);
     logger.success(`Streaming di MPV (${path.basename(playerPath)})`);
+    if (metadata) {
+      const { addToHistory } = await import("./history");
+      addToHistory(metadata);
+    }
     return true;
   } catch (err: any) {
     logger.error(`Gagal membuka MPV: ${err.message}`);
@@ -171,6 +180,10 @@ export const playUrl = async (
       logger.info("Membuka di Browser sebagai fallback...");
       await open(url);
       await new Promise((r) => setTimeout(r, 2000));
+      if (metadata) {
+        const { addToHistory } = await import("./history");
+        addToHistory(metadata);
+      }
       return true;
     }
     return false;
