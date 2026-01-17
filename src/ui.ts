@@ -28,7 +28,7 @@ export const showBanner = () => {
     horizontalLayout: "fitted",
   });
   console.log(gradient.pastel.multiline(banner));
-  console.log(chalk.hex(theme.muted)("  v2.8.1  •  Streaming Anime CLI By ShDitz\n"));
+  console.log(chalk.hex(theme.muted)("  v2.8.2  •  Streaming Anime CLI By ShDitz\n"));
   console.log(chalk.hex(theme.muted)("  Butuh bantuan tentang Anichi? ketik 8 untuk 'FAQ'\n"));
 };
 
