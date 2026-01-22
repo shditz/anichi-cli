@@ -20,7 +20,6 @@ export const loadHistory = (): WatchHistoryItem[] => {
       logger.warn("File riwayat corrupt, reset ke kosong.");
       return [];
     }
-    // Sort ASCENDING berdasarkan timestamp (terlama dulu)
     return (data as WatchHistoryItem[]).sort(
       (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
@@ -33,7 +32,6 @@ export const loadHistory = (): WatchHistoryItem[] => {
 export const saveHistory = (history: WatchHistoryItem[]): void => {
   ensureConfigDir();
   try {
-    // Batasi maksimal 100 entri (setelah sort ascending, slice(0, 100) menghapus yang terbaru jika melebihi)
     const limited = history.slice(0, MAX_ENTRIES);
     fs.writeFileSync(HISTORY_FILE, JSON.stringify(limited, null, 2));
   } catch (err: any) {
@@ -42,21 +40,18 @@ export const saveHistory = (history: WatchHistoryItem[]): void => {
 };
 
 export const addToHistory = (item: Omit<WatchHistoryItem, "timestamp">): void => {
-  let history = loadHistory(); // sudah di-sort ascending
+  let history = loadHistory();
 
   const newTimestamp = new Date().toISOString();
 
-  // Cari apakah kombinasi slug + episode sudah ada
   const existingIndex = history.findIndex(
     (h) => h.slug === item.slug && h.episode === item.episode
   );
 
   if (existingIndex !== -1) {
-    // Jika sudah ada → overwrite timestamp saja
     history[existingIndex].timestamp = newTimestamp;
     logger.muted(`Riwayat diperbarui: ${item.animeTitle} Ep ${item.episode}`);
   } else {
-    // Jika belum ada → tambahkan entri baru di akhir (karena ascending)
     const newItem: WatchHistoryItem = {
       ...item,
       timestamp: newTimestamp,
@@ -65,9 +60,8 @@ export const addToHistory = (item: Omit<WatchHistoryItem, "timestamp">): void =>
     logger.muted(`Riwayat ditambahkan: ${item.animeTitle} Ep ${item.episode}`);
   }
 
-  // Jika setelah penambahan/update melebihi batas, hapus yang paling lama (index 0)
   if (history.length > MAX_ENTRIES) {
-    history = history.slice(1); // hapus entri terlama
+    history = history.slice(1);
     logger.muted(`Riwayat melebihi batas, entri terlama dihapus.`);
   }
 

@@ -1,12 +1,12 @@
 import chalk from "chalk";
 import ora from "ora";
-import {Command} from "commander";
+import { Command } from "commander";
 import readline from "readline";
 import open from "open";
 import api from "./api";
-import {playUrl} from "./player";
-import {loadConfig, saveConfig, getConfigPath} from "./config";
-import {theme} from "./ui";
+import { playUrl } from "./player";
+import { loadConfig, saveConfig, getConfigPath, ensureScriptsAndCacheDirs } from "./config";
+import { theme } from "./ui";
 import {
   clearScreen,
   showBanner,
@@ -27,11 +27,15 @@ import {
   printFAQ,
   printWatchHistory,
 } from "./ui";
-import {AnimeDetailData, WatchHistoryItem, BatchData} from "./types";
-import {loadHistory, clearHistory} from "./history";
+import { AnimeDetailData, WatchHistoryItem, BatchData } from "./types";
+import { loadHistory, clearHistory, addToHistory } from "./history";
+import { getResumeForEpisode, clearResume, removeResumeForEpisode } from "./resume";
+
+
+ensureScriptsAndCacheDirs();
 
 const program = new Command();
-program.name("anichi").description("Anime streaming for CLI").version("2.8.2");
+program.name("anichi").description("Anime streaming for CLI").version("2.8.3");
 
 const ask = (query: string): Promise<string> => {
   const rl = readline.createInterface({
@@ -46,11 +50,30 @@ const ask = (query: string): Promise<string> => {
   );
 };
 
+const extractEpisodeNumber = (title: string): number => {
+  const matches = title.match(/(?:Episode|Eps?)\s*(\d+)/i);
+  if (matches) {
+    return parseInt(matches[1], 10);
+  }
+  const nums = title.match(/\d+/g);
+  if (nums) {
+    return parseInt(nums[nums.length - 1], 10);
+  }
+  return 0;
+};
+
 const resolveEpisode = (eps: number | "latest", list: any[]) => {
   if (eps === "latest") return list[0];
 
-  const targetStr = eps.toString();
-  return list.find((e) => e.title.includes(`Episode ${targetStr}`));
+  const targetNum = eps;
+
+  const exactMatch = list.find((e: any) => extractEpisodeNumber(e.title) === targetNum);
+  if (exactMatch) return exactMatch;
+
+  const fuzzyMatch = list.find((e: any) => e.title.includes(targetNum.toString()));
+  if (fuzzyMatch) return fuzzyMatch;
+
+  return null;
 };
 
 const handleBatch = async (animeSlug: string, batchData: any) => {
@@ -280,10 +303,28 @@ const handlePlay = async (slug: string, episodeStr: string, animeData?: any) => 
     const args = config.playerArgs ? config.playerArgs.split(" ") : [];
 
     let episodeNum = 0;
-    const match = episode.title.match(/\d+/);
-    if (match) episodeNum = parseInt(match[0]);
+    if (episodeStr === "latest") {
+      episodeNum = extractEpisodeNumber(episode.title);
+    } else {
+      episodeNum = parseInt(episodeStr, 10);
+    }
 
-    const success = await playUrl(url, playerPath, args, false, {
+    if (isNaN(episodeNum)) {
+      logger.error("Invalid episode number");
+      return false;
+    }
+
+    // Cek resume
+    const resume = getResumeForEpisode(slug, episodeNum);
+    let finalArgs = args;
+    if (resume) {
+      finalArgs = [...args, `--start=${resume.position}`];
+      const mins = Math.floor(resume.position / 60);
+      const secs = Math.floor(resume.position % 60);
+      logger.success(`Melanjutkan dari ${mins}:${secs.toString().padStart(2, "0")}`);
+    }
+
+    const success = await playUrl(url, playerPath, finalArgs, false, {
       slug,
       animeTitle: data.title,
       episode: episodeNum,
@@ -300,7 +341,7 @@ const showEpisodeMenu = async (slug: string, data: any) => {
   clearScreen();
   showAnimeDetails(data);
   createHeader("Episodes", "#ff6b9d");
-  printEpisodeList(data.episode_list);
+  printEpisodeList(data.episode_list, slug);
   logger.br();
 
   logger.muted("  Perintah:");
@@ -352,7 +393,7 @@ const showEpisodeMenu = async (slug: string, data: any) => {
   if (choice === "d" || choice === "download") {
     clearScreen();
     createHeader("Pilih Episode untuk Download", "#00ff9f");
-    printEpisodeList(data.episode_list);
+    printEpisodeList(data.episode_list, slug);
     logger.br();
     logger.muted("  Ketik nomor episode atau 'back'\n");
 
@@ -720,9 +761,8 @@ const handleSchedule = async () => {
   }
 
   if (res.meta.status && res.data) {
-    // Transform object keys to array for UI
     const scheduleList = Object.keys(res.data).map((key) => ({
-      day: key.charAt(0).toUpperCase() + key.slice(1), // Capitalize
+      day: key.charAt(0).toUpperCase() + key.slice(1),
       anime_list: res.data[key],
     }));
 
@@ -830,6 +870,8 @@ const handleWatchHistory = async () => {
   logger.muted("  Perintah:");
   logger.muted("  • [nomor] - Putar ulang episode");
   logger.muted("  • clear   - Hapus semua riwayat");
+  logger.muted("  • clear-resume - Hapus semua resume");
+  logger.muted("  • [nomor]-del - Hapus resume untuk episode tersebut (contoh: 1-del)");
   logger.muted("  • back / 0 - Kembali ke menu utama\n");
 
   const answer = await ask("Perintah:");
@@ -843,6 +885,27 @@ const handleWatchHistory = async () => {
     clearHistory();
     await new Promise((r) => setTimeout(r, 2000));
     return await handleWatchHistory();
+  }
+
+  if (choice === "clear-resume") {
+    clearResume();
+    await new Promise((r) => setTimeout(r, 2000));
+    return await handleWatchHistory();
+  }
+
+  const delMatch = choice.match(/^(\d+)-del$/);
+  if (delMatch) {
+    const index = parseInt(delMatch[1]) - 1;
+    if (!isNaN(index) && index >= 0 && index < history.length) {
+      const item: WatchHistoryItem = history[index];
+      removeResumeForEpisode(item.slug, item.episode);
+      await new Promise((r) => setTimeout(r, 2000));
+      return await handleWatchHistory();
+    } else {
+      logger.warn("Nomor tidak valid.");
+      await new Promise((r) => setTimeout(r, 1000));
+      return await handleWatchHistory();
+    }
   }
 
   const index = parseInt(choice) - 1;

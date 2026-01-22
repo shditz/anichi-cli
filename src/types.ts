@@ -199,6 +199,15 @@ export interface WatchHistoryItem {
   timestamp: string;
 }
 
+export interface ResumeWatchItem {
+  slug: string;
+  episode: number;
+  position: number;
+  duration: number;
+  timestamp: string;
+  animeTitle?: string;
+}
+
 export const theme = {
   primary: "#00d9ff",
   secondary: "#ff6b9d",

@@ -3,7 +3,8 @@ import boxen from "boxen";
 import gradient from "gradient-string";
 import figlet from "figlet";
 import Table from "cli-table3";
-import {ScheduleAnimeItem, WatchHistoryItem} from "./types";
+import { ScheduleAnimeItem, WatchHistoryItem } from "./types";
+import { getResumeForEpisode } from "./resume";
 
 export const theme = {
   primary: "#00d9ff",
@@ -28,7 +29,7 @@ export const showBanner = () => {
     horizontalLayout: "fitted",
   });
   console.log(gradient.pastel.multiline(banner));
-  console.log(chalk.hex(theme.muted)("  v2.8.2  •  Streaming Anime CLI By ShDitz\n"));
+  console.log(chalk.hex(theme.muted)("  v2.8.3  •  Streaming Anime CLI By ShDitz\n"));
   console.log(chalk.hex(theme.muted)("  Butuh bantuan tentang Anichi? ketik 8 untuk 'FAQ'\n"));
 };
 
@@ -45,7 +46,7 @@ export const createBox = (content: string, title?: string, color: string = theme
 
 export const createHeader = (text: string, color: string = theme.primary) => {
   const box = boxen(chalk.bold.white(text), {
-    padding: {top: 0, bottom: 0, left: 2, right: 2},
+    padding: { top: 0, bottom: 0, left: 2, right: 2 },
     borderStyle: "round",
     borderColor: color,
     dimBorder: false,
@@ -63,6 +64,13 @@ export const logger = {
   br: () => console.log(""),
 };
 
+const formatTime = (seconds: number): string => {
+  if (!seconds || seconds <= 0) return "-";
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+};
+
 export const printAnimeList = (list: any[], isOngoing: boolean) => {
   const table = new Table({
     head: [
@@ -74,7 +82,7 @@ export const printAnimeList = (list: any[], isOngoing: boolean) => {
     ],
     colWidths: [5, 42, 6, 10, 9],
     wordWrap: true,
-    style: {head: [], border: [theme.border]},
+    style: { head: [], border: [theme.border] },
   });
 
   list.forEach((anime, idx) => {
@@ -97,34 +105,52 @@ export const printAnimeList = (list: any[], isOngoing: boolean) => {
   console.log(table.toString());
 };
 
-export const printEpisodeList = (list: any[]) => {
+export const printEpisodeList = (list: any[], animeSlug: string) => {
   if (list.length === 0) {
     logger.muted("No episodes available");
     return;
   }
 
   const sortedList = [...list].sort((a, b) => {
-    const numA = parseInt(a.title.match(/(\d+)/)?.[0] || "0", 10);
-    const numB = parseInt(b.title.match(/(\d+)/)?.[0] || "0", 10);
-
+    const numA = extractEpisodeNumber(a.title);
+    const numB = extractEpisodeNumber(b.title);
     return numA - numB;
   });
 
   const table = new Table({
-    head: [chalk.bold.white(" No"), chalk.bold.white("Episode")],
-    colWidths: [10, 35],
+    head: [chalk.bold.white(" No"), chalk.bold.white("Episode"), chalk.bold.white("Resume")],
+    colWidths: [10, 35, 20],
     wordWrap: true,
-    style: {head: [], border: [theme.border]},
+    style: { head: [], border: [theme.border] },
   });
 
   sortedList.forEach((ep, idx) => {
+    const epNum = extractEpisodeNumber(ep.title);
+    const resume = getResumeForEpisode(animeSlug, epNum);
+    const resumeText = resume
+      ? chalk.hex(theme.warning)(`Lanjut ${formatTime(resume.position)}`)
+      : "-";
+
     table.push([
       chalk.hex(theme.primary).bold((idx + 1).toString().padStart(3)),
       chalk.white(ep.title),
+      resumeText,
     ]);
   });
 
   console.log(table.toString());
+};
+
+const extractEpisodeNumber = (title: string): number => {
+  const matches = title.match(/(?:Episode|Eps?)\s*(\d+)/i);
+  if (matches) {
+    return parseInt(matches[1], 10);
+  }
+  const nums = title.match(/\d+/g);
+  if (nums) {
+    return parseInt(nums[nums.length - 1], 10);
+  }
+  return 0;
 };
 
 export const showMenu = (options: string[]) => {
@@ -139,7 +165,7 @@ export const showAnimeDetails = (data: any) => {
   const metaTable = new Table({
     colWidths: [20, 60],
     wordWrap: true,
-    style: {head: [], border: [theme.border]},
+    style: { head: [], border: [theme.border] },
   });
 
   metaTable.push(
@@ -180,7 +206,7 @@ export const printQualityOptions = (qualities: any[]) => {
   const table = new Table({
     head: [chalk.bold.white("No"), chalk.bold.white("Quality"), chalk.bold.white("Providers")],
     colWidths: [5, 15, 10],
-    style: {head: [], border: [theme.border]},
+    style: { head: [], border: [theme.border] },
   });
 
   qualities.forEach((q, idx) => {
@@ -209,7 +235,7 @@ export const printSearchResults = (list: any[]) => {
     ],
     colWidths: [5, 50, 15, 7],
     wordWrap: true,
-    style: {head: [], border: [theme.border]},
+    style: { head: [], border: [theme.border] },
   });
 
   list.forEach((anime, idx) => {
@@ -245,7 +271,7 @@ export const printGenreAnimeList = (list: any[]) => {
     ],
     colWidths: [5, 55, 6, 7],
     wordWrap: true,
-    style: {head: [], border: [theme.border]},
+    style: { head: [], border: [theme.border] },
   });
 
   list.forEach((anime, idx) => {
@@ -279,7 +305,7 @@ export const printGenreList = (list: any[]) => {
     head: Array(COLS).fill(chalk.bold.white("No")),
     colWidths: Array(COLS).fill(25),
     wordWrap: true,
-    style: {head: [], border: [theme.border]},
+    style: { head: [], border: [theme.border] },
   });
 
   for (let row = 0; row < ROWS; row++) {
@@ -338,7 +364,7 @@ export const printSchedule = (list: any[]) => {
       head: [chalk.bold.white("No"), chalk.bold.white("Title")],
       colWidths: [5, 60],
       wordWrap: true,
-      style: {head: [], border: [theme.border]},
+      style: { head: [], border: [theme.border] },
     });
 
     day.anime_list.forEach((anime: ScheduleAnimeItem, idx: number) => {
@@ -356,7 +382,7 @@ export const printBatchFormats = (formats: any[]) => {
   const table = new Table({
     head: [chalk.bold.white("No"), chalk.bold.white("Format")],
     colWidths: [5, 30],
-    style: {head: [], border: [theme.border]},
+    style: { head: [], border: [theme.border] },
   });
 
   formats.forEach((f, idx) => {
@@ -371,7 +397,7 @@ export const printBatchQualities = (qualities: any[]) => {
   const table = new Table({
     head: [chalk.bold.white("No"), chalk.bold.white("Quality")],
     colWidths: [5, 30],
-    style: {head: [], border: [theme.border]},
+    style: { head: [], border: [theme.border] },
   });
 
   qualities.forEach((q, idx) => {
@@ -386,7 +412,7 @@ export const printBatchProviders = (providers: any[]) => {
   const table = new Table({
     head: [chalk.bold.white("No"), chalk.bold.white("Provider")],
     colWidths: [5, 30],
-    style: {head: [], border: [theme.border]},
+    style: { head: [], border: [theme.border] },
   });
 
   providers.forEach((p, idx) => {
@@ -402,7 +428,7 @@ export const printDownloadOptions = (downloads: any[]) => {
   const table = new Table({
     head: [chalk.bold.white("No"), chalk.bold.white("Quality"), chalk.bold.white("Size")],
     colWidths: [5, 20, 15],
-    style: {head: [], border: [theme.border]},
+    style: { head: [], border: [theme.border] },
   });
 
   downloads.forEach((dl, idx) => {
@@ -429,7 +455,7 @@ export const printFAQ = () => {
         chalk
           .hex(theme.warning)
           .bold(
-            "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"
+            "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1  '))"
           ),
     },
     {
@@ -508,10 +534,11 @@ export const printWatchHistory = (items: WatchHistoryItem[]) => {
       chalk.bold.white("Judul Anime"),
       chalk.bold.white("Episode"),
       chalk.bold.white("Waktu"),
+      chalk.bold.white("Resume"),
     ],
-    colWidths: [5, 45, 10, 20],
+    colWidths: [5, 40, 10, 20, 20],
     wordWrap: true,
-    style: {head: [], border: [theme.border]},
+    style: { head: [], border: [theme.border] },
   });
 
   items.forEach((item, idx) => {
@@ -520,11 +547,17 @@ export const printWatchHistory = (items: WatchHistoryItem[]) => {
       dateStyle: "medium",
       timeStyle: "short",
     });
+    const resume = getResumeForEpisode(item.slug, item.episode);
+    const resumeText = resume
+      ? chalk.hex(theme.warning)(`Lanjut ${formatTime(resume.position)}`)
+      : "-";
+
     table.push([
       chalk.hex(theme.primary).bold((idx + 1).toString()),
       item.animeTitle,
       `Ep ${item.episode}`,
       chalk.hex(theme.info)(waktu),
+      resumeText,
     ]);
   });
 
