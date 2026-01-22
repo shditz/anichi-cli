@@ -1,12 +1,12 @@
 import chalk from "chalk";
 import ora from "ora";
-import { Command } from "commander";
+import {Command} from "commander";
 import readline from "readline";
 import open from "open";
 import api from "./api";
-import { playUrl } from "./player";
-import { loadConfig, saveConfig, getConfigPath, ensureScriptsAndCacheDirs } from "./config";
-import { theme } from "./ui";
+import {playUrl} from "./player";
+import {loadConfig, saveConfig, getConfigPath, ensureScriptsAndCacheDirs} from "./config";
+import {theme} from "./ui";
 import {
   clearScreen,
   showBanner,
@@ -27,15 +27,14 @@ import {
   printFAQ,
   printWatchHistory,
 } from "./ui";
-import { AnimeDetailData, WatchHistoryItem, BatchData } from "./types";
-import { loadHistory, clearHistory, addToHistory } from "./history";
-import { getResumeForEpisode, clearResume, removeResumeForEpisode } from "./resume";
-
+import {AnimeDetailData, WatchHistoryItem, BatchData} from "./types";
+import {loadHistory, clearHistory, addToHistory} from "./history";
+import {getResumeForEpisode, clearResume, removeResumeForEpisode} from "./resume";
 
 ensureScriptsAndCacheDirs();
 
 const program = new Command();
-program.name("anichi").description("Anime streaming for CLI").version("2.8.3");
+program.name("anichi").description("Anime streaming for CLI").version("2.8.5");
 
 const ask = (query: string): Promise<string> => {
   const rl = readline.createInterface({
@@ -46,7 +45,7 @@ const ask = (query: string): Promise<string> => {
     rl.question(chalk.hex("#00d9ff")(`  ${query} `), (ans) => {
       rl.close();
       resolve(ans.trim());
-    })
+    }),
   );
 };
 
@@ -314,17 +313,7 @@ const handlePlay = async (slug: string, episodeStr: string, animeData?: any) => 
       return false;
     }
 
-    // Cek resume
-    const resume = getResumeForEpisode(slug, episodeNum);
-    let finalArgs = args;
-    if (resume) {
-      finalArgs = [...args, `--start=${resume.position}`];
-      const mins = Math.floor(resume.position / 60);
-      const secs = Math.floor(resume.position % 60);
-      logger.success(`Melanjutkan dari ${mins}:${secs.toString().padStart(2, "0")}`);
-    }
-
-    const success = await playUrl(url, playerPath, finalArgs, false, {
+    const success = await playUrl(url, playerPath, args, false, {
       slug,
       animeTitle: data.title,
       episode: episodeNum,

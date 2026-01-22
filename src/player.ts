@@ -1,11 +1,11 @@
-import { spawn } from "child_process";
+import {spawn} from "child_process";
 import open from "open";
-import { logger } from "./ui";
+import {logger} from "./ui";
 import fs from "fs";
 import path from "path";
 import os from "os";
-import { addOrUpdateResume, getResumeForEpisode } from "./resume";
-import { Buffer } from "buffer";
+import {addOrUpdateResume, getResumeForEpisode} from "./resume";
+import {Buffer} from "buffer";
 
 const MPV_EXECUTABLE = {
   win32: "mpv.exe",
@@ -62,8 +62,8 @@ const findMpvOnLinux = (): string | null => {
 const commandExists = (cmd: string): boolean => {
   try {
     const check = process.platform === "win32" ? `where "${cmd}" 2>nul` : `command -v ${cmd}`;
-    const { execSync } = require("child_process");
-    execSync(check, { stdio: "pipe" });
+    const {execSync} = require("child_process");
+    execSync(check, {stdio: "pipe"});
     return true;
   } catch {
     return false;
@@ -106,13 +106,13 @@ const getResumeCachePath = (slug: string, episode: number): string => {
 const spawnPlayerWithIpc = (
   player: string,
   args: string[],
-  ipcPath: string
-): Promise<{ success: boolean; finalPosition: number | null }> => {
+  ipcPath: string,
+): Promise<{success: boolean; finalPosition: number | null}> => {
   return new Promise((resolve) => {
     const finalArgs = [...args, `--input-ipc-server=${ipcPath}`];
 
     const child = spawn(player, finalArgs, {
-      stdio: ['ignore', 'ignore', 'ignore'],
+      stdio: ["ignore", "pipe", "pipe"],
       shell: process.platform === "win32",
       env: process.env,
     });
@@ -125,13 +125,17 @@ const spawnPlayerWithIpc = (
     if (process.platform !== "win32") {
       const net = require("net") as typeof import("net");
       const server = net.createServer((socket: import("net").Socket) => {
-        socket.on("data", ( Buffer) => {
+        socket.on("data", (Buffer) => {
           const lines = Buffer.toString().split("\n");
           for (const line of lines) {
             if (!line.trim()) continue;
             try {
               const res = JSON.parse(line);
-              if (res.event === "property-change" && res.name === "time-pos" && typeof res.data === "number") {
+              if (
+                res.event === "property-change" &&
+                res.name === "time-pos" &&
+                typeof res.data === "number"
+              ) {
                 lastKnownPosition = Math.floor(res.data);
               }
             } catch {}
@@ -158,7 +162,7 @@ const spawnPlayerWithIpc = (
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
       const finalPos = lastKnownPosition ?? elapsed;
 
-      resolve({ success, finalPosition: finalPos });
+      resolve({success, finalPosition: finalPos});
     };
 
     child.on("error", (err) => {
@@ -177,10 +181,8 @@ export const playUrl = async (
   customPlayer?: string,
   customArgs: string[] = [],
   noBrowser = false,
-  metadata?: { slug: string; animeTitle: string; episode: number }
+  metadata?: {slug: string; animeTitle: string; episode: number},
 ): Promise<boolean> => {
-  logger.info(`Memulai playUrl untuk URL: ${url}`);
-
   let playerPath = customPlayer || findPlayer();
   const ytdlpFound = commandExists("yt-dlp");
 
@@ -190,7 +192,7 @@ export const playUrl = async (
       logger.info("Membuka di Browser sebagai fallback...");
       await open(url);
       if (metadata) {
-        const { addToHistory } = await import("./history");
+        const {addToHistory} = await import("./history");
         addToHistory(metadata);
       }
       return true;
@@ -201,17 +203,26 @@ export const playUrl = async (
   if (!ytdlpFound) {
     logger.warn("yt-dlp tidak ditemukan. Streaming mungkin tidak akan berjalan.");
   } else {
-    logger.success("yt-dlp ditemukan.");
+    logger.success("Membuka player...");
   }
 
-  const finalArgs = customArgs.length > 0 ? customArgs : [
+  const defaultArgs = [
     "--fs",
     "--no-border",
     "--deband=no",
     "--scale=ewa_lanczossharp",
     "--cscale=ewa_lanczossharp",
     "--tscale=oversample",
+    "--cache=yes",
+    "--demuxer-max-bytes=150M",
+    "--demuxer-max-back-bytes=100M",
   ];
+  let finalArgs = [...defaultArgs];
+
+  if (customArgs && customArgs.length > 0) {
+    const filteredCustom = customArgs.filter((arg) => !arg.startsWith("--start="));
+    finalArgs = [...finalArgs, ...filteredCustom];
+  }
 
   if (metadata) {
     const resume = getResumeForEpisode(metadata.slug, metadata.episode);
@@ -226,7 +237,13 @@ export const playUrl = async (
       finalArgs.push(`--script-opts-add=user-data/anichi-slug=${metadata.slug}`);
       finalArgs.push(`--script-opts-add=user-data/anichi-episode=${metadata.episode}`);
 
-      const scriptPath = path.join(os.homedir(), ".config", "anichi", "scripts", "save-position.lua");
+      const scriptPath = path.join(
+        os.homedir(),
+        ".config",
+        "anichi",
+        "scripts",
+        "save-position.lua",
+      );
       if (fs.existsSync(scriptPath)) {
         finalArgs.push(`--script=${scriptPath}`);
       }
@@ -239,7 +256,7 @@ export const playUrl = async (
     const startTime = Date.now();
 
     const child = spawn(playerPath, [...finalArgs, url], {
-      stdio: ['ignore', 'ignore', 'ignore'],
+      stdio: ["ignore", "ignore", "ignore"],
       shell: process.platform === "win32",
       env: process.env,
     });
@@ -292,7 +309,7 @@ export const playUrl = async (
   }
 
   if (metadata) {
-    const { addToHistory } = await import("./history");
+    const {addToHistory} = await import("./history");
     addToHistory(metadata);
   }
 
