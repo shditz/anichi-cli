@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.8.5-blue.svg)
+![Version](https://img.shields.io/badge/version-2.8.6-blue.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-orange.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)
@@ -88,7 +88,7 @@ yarn global add anichi
 
 ```bash
 anichi --version
-# Output: 2.8.5
+# Output: 2.8.6
 
 anichi --help
 # Shows available commands
@@ -275,6 +275,14 @@ anichi/
 ## 📝 License
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🤝 Contributors
+
+We would like to thank the following contributors who have helped improve this project:
+
+- [Hafast 2008](https://github.com/Hafiz2818)
 
 ---
 
