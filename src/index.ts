@@ -35,7 +35,7 @@ import { getResumeForEpisode, clearResume, removeResumeForEpisode } from "./resu
 ensureScriptsAndCacheDirs();
 
 const program = new Command();
-program.name("anichi").description("Anime streaming for CLI").version("2.8.1");
+program.name("anichi").description("Anime streaming for CLI").version("2.8.3");
 
 const ask = (query: string): Promise<string> => {
   const rl = readline.createInterface({

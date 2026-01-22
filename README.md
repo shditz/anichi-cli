@@ -88,7 +88,7 @@ yarn global add anichi
 
 ```bash
 anichi --version
-# Output: 2.8.2
+# Output: 2.8.3
 
 anichi --help
 # Shows available commands
