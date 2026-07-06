@@ -7,14 +7,21 @@ import { ScheduleAnimeItem, WatchHistoryItem } from "./types";
 import { getResumeForEpisode } from "./resume";
 
 export const theme = {
-  primary: "#00d9ff",
-  secondary: "#ff6b9d",
-  success: "#00ff9f",
-  warning: "#ffaa00",
-  error: "#ff4757",
-  info: "#70a1ff",
-  muted: "#747d8c",
-  border: "#3a506b",
+  primary: "#00f5ff",     // Neon Cyan
+  secondary: "#ff007f",   // Neon Pink
+  success: "#00ff9f",     // Neon Green
+  warning: "#ffaa00",     // Warm Orange
+  error: "#ff4757",       // Vibrant Red
+  info: "#70a1ff",        // Soft Blue
+  muted: "#64748b",       // Slate Gray (Redup)
+  border: "#334155",      // Dark Slate (Border)
+};
+
+export const tableChars = {
+  'top': '─', 'top-mid': '┬', 'top-left': '┌', 'top-right': '┐',
+  'bottom': '─', 'bottom-mid': '┴', 'bottom-left': '└', 'bottom-right': '┘',
+  'left': '│', 'left-mid': '├', 'mid': '─', 'mid-mid': '┼',
+  'right': '│', 'right-mid': '┤', 'middle': '│'
 };
 
 export const clearScreen = () => {
@@ -28,9 +35,22 @@ export const showBanner = () => {
     font: "ANSI Shadow",
     horizontalLayout: "fitted",
   });
-  console.log(gradient.pastel.multiline(banner));
-  console.log(chalk.hex(theme.muted)("  v2.8.6  •  Streaming Anime CLI By ShDitz\n"));
-  console.log(chalk.hex(theme.muted)("  Butuh bantuan tentang Anichi? ketik 8 untuk 'FAQ'\n"));
+  const neonGradient = gradient(["#00f5ff", "#ff007f"]);
+  console.log(neonGradient.multiline(banner));
+  console.log(
+    chalk.hex(theme.muted)(`  v2.9.1  •  `) +
+    chalk.hex(theme.primary).bold("Streaming Anime CLI") +
+    chalk.hex(theme.muted)(" By ShDitz\n")
+  );
+  console.log(
+    chalk.hex(theme.muted)("  Butuh bantuan? Ketik ") +
+    chalk.hex(theme.secondary).bold("8") +
+    chalk.hex(theme.muted)(" untuk ") +
+    chalk.hex(theme.secondary).bold("'FAQ'") +
+    chalk.hex(theme.muted)(" atau ") +
+    chalk.hex(theme.secondary).bold("'back'") +
+    chalk.hex(theme.muted)(" untuk kembali\n")
+  );
 };
 
 export const createBox = (content: string, title?: string, color: string = theme.primary) => {
@@ -82,7 +102,8 @@ export const printAnimeList = (list: any[], isOngoing: boolean) => {
     ],
     colWidths: [5, 42, 6, 10, 9],
     wordWrap: true,
-    style: { head: [], border: [theme.border] },
+    chars: tableChars,
+    style: { head: [], border: [theme.muted] },
   });
 
   list.forEach((anime, idx) => {
@@ -121,7 +142,8 @@ export const printEpisodeList = (list: any[], animeSlug: string) => {
     head: [chalk.bold.white(" No"), chalk.bold.white("Episode"), chalk.bold.white("Resume")],
     colWidths: [10, 35, 20],
     wordWrap: true,
-    style: { head: [], border: [theme.border] },
+    chars: tableChars,
+    style: { head: [], border: [theme.muted] },
   });
 
   sortedList.forEach((ep, idx) => {
@@ -165,7 +187,8 @@ export const showAnimeDetails = (data: any) => {
   const metaTable = new Table({
     colWidths: [20, 60],
     wordWrap: true,
-    style: { head: [], border: [theme.border] },
+    chars: tableChars,
+    style: { head: [], border: [theme.muted] },
   });
 
   metaTable.push(
@@ -206,7 +229,8 @@ export const printQualityOptions = (qualities: any[]) => {
   const table = new Table({
     head: [chalk.bold.white("No"), chalk.bold.white("Quality"), chalk.bold.white("Providers")],
     colWidths: [5, 15, 10],
-    style: { head: [], border: [theme.border] },
+    chars: tableChars,
+    style: { head: [], border: [theme.muted] },
   });
 
   qualities.forEach((q, idx) => {
@@ -235,7 +259,8 @@ export const printSearchResults = (list: any[]) => {
     ],
     colWidths: [5, 50, 15, 7],
     wordWrap: true,
-    style: { head: [], border: [theme.border] },
+    chars: tableChars,
+    style: { head: [], border: [theme.muted] },
   });
 
   list.forEach((anime, idx) => {
@@ -271,7 +296,8 @@ export const printGenreAnimeList = (list: any[]) => {
     ],
     colWidths: [5, 55, 6, 7],
     wordWrap: true,
-    style: { head: [], border: [theme.border] },
+    chars: tableChars,
+    style: { head: [], border: [theme.muted] },
   });
 
   list.forEach((anime, idx) => {
@@ -305,7 +331,8 @@ export const printGenreList = (list: any[]) => {
     head: Array(COLS).fill(chalk.bold.white("No")),
     colWidths: Array(COLS).fill(25),
     wordWrap: true,
-    style: { head: [], border: [theme.border] },
+    chars: tableChars,
+    style: { head: [], border: [theme.muted] },
   });
 
   for (let row = 0; row < ROWS; row++) {
@@ -364,7 +391,8 @@ export const printSchedule = (list: any[]) => {
       head: [chalk.bold.white("No"), chalk.bold.white("Title")],
       colWidths: [5, 60],
       wordWrap: true,
-      style: { head: [], border: [theme.border] },
+      chars: tableChars,
+      style: { head: [], border: [theme.muted] },
     });
 
     day.anime_list.forEach((anime: ScheduleAnimeItem, idx: number) => {
@@ -382,7 +410,8 @@ export const printBatchFormats = (formats: any[]) => {
   const table = new Table({
     head: [chalk.bold.white("No"), chalk.bold.white("Format")],
     colWidths: [5, 30],
-    style: { head: [], border: [theme.border] },
+    chars: tableChars,
+    style: { head: [], border: [theme.muted] },
   });
 
   formats.forEach((f, idx) => {
@@ -397,7 +426,8 @@ export const printBatchQualities = (qualities: any[]) => {
   const table = new Table({
     head: [chalk.bold.white("No"), chalk.bold.white("Quality")],
     colWidths: [5, 30],
-    style: { head: [], border: [theme.border] },
+    chars: tableChars,
+    style: { head: [], border: [theme.muted] },
   });
 
   qualities.forEach((q, idx) => {
@@ -412,7 +442,8 @@ export const printBatchProviders = (providers: any[]) => {
   const table = new Table({
     head: [chalk.bold.white("No"), chalk.bold.white("Provider")],
     colWidths: [5, 30],
-    style: { head: [], border: [theme.border] },
+    chars: tableChars,
+    style: { head: [], border: [theme.muted] },
   });
 
   providers.forEach((p, idx) => {
@@ -428,7 +459,8 @@ export const printDownloadOptions = (downloads: any[]) => {
   const table = new Table({
     head: [chalk.bold.white("No"), chalk.bold.white("Quality"), chalk.bold.white("Size")],
     colWidths: [5, 20, 15],
-    style: { head: [], border: [theme.border] },
+    chars: tableChars,
+    style: { head: [], border: [theme.muted] },
   });
 
   downloads.forEach((dl, idx) => {
@@ -538,7 +570,8 @@ export const printWatchHistory = (items: WatchHistoryItem[]) => {
     ],
     colWidths: [5, 40, 10, 20, 20],
     wordWrap: true,
-    style: { head: [], border: [theme.border] },
+    chars: tableChars,
+    style: { head: [], border: [theme.muted] },
   });
 
   items.forEach((item, idx) => {

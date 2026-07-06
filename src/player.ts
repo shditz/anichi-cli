@@ -1,11 +1,11 @@
-import {spawn} from "child_process";
+import {spawn, execSync} from "child_process";
 import open from "open";
 import {logger} from "./ui";
 import fs from "fs";
 import path from "path";
 import os from "os";
 import {addOrUpdateResume, getResumeForEpisode} from "./resume";
-import {Buffer} from "buffer";
+import net from "net";
 
 const MPV_EXECUTABLE = {
   win32: "mpv.exe",
@@ -62,7 +62,6 @@ const findMpvOnLinux = (): string | null => {
 const commandExists = (cmd: string): boolean => {
   try {
     const check = process.platform === "win32" ? `where "${cmd}" 2>nul` : `command -v ${cmd}`;
-    const {execSync} = require("child_process");
     execSync(check, {stdio: "pipe"});
     return true;
   } catch {
@@ -107,62 +106,91 @@ const spawnPlayerWithIpc = (
   player: string,
   args: string[],
   ipcPath: string,
-): Promise<{success: boolean; finalPosition: number | null}> => {
+): Promise<{success: boolean; finalPosition: number | null; exitCode: number | null; duration: number}> => {
   return new Promise((resolve) => {
     const finalArgs = [...args, `--input-ipc-server=${ipcPath}`];
 
     const child = spawn(player, finalArgs, {
       stdio: ["ignore", "pipe", "pipe"],
-      shell: process.platform === "win32",
+      shell: false,
       env: process.env,
     });
 
     let resolved = false;
     let lastKnownPosition: number | null = null;
-
+    let exitCode: number | null = null;
     const startTime = Date.now();
 
-    if (process.platform !== "win32") {
-      const net = require("net") as typeof import("net");
-      const server = net.createServer((socket: import("net").Socket) => {
-        socket.on("data", (Buffer) => {
-          const lines = Buffer.toString().split("\n");
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            try {
-              const res = JSON.parse(line);
-              if (
-                res.event === "property-change" &&
-                res.name === "time-pos" &&
-                typeof res.data === "number"
-              ) {
-                lastKnownPosition = Math.floor(res.data);
-              }
-            } catch {}
-          }
-        });
+    let client: net.Socket | null = null;
+    let retries = 0;
+    const maxRetries = 10;
+
+    const tryConnect = () => {
+      if (child.killed || resolved) return;
+
+      client = net.connect(ipcPath, () => {
+        try {
+          client?.write(JSON.stringify({ command: ["observe_property", 1, "time-pos"] }) + "\n");
+        } catch {
+          // ignore write errors
+        }
       });
 
-      server.listen(ipcPath, () => {});
-      child.on("exit", () => {
-        server.close(() => {
-          if (fs.existsSync(ipcPath)) {
-            try {
-              fs.unlinkSync(ipcPath);
-            } catch {}
+      client.on("data", (data) => {
+        const lines = data.toString().split("\n");
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const res = JSON.parse(line);
+            if (
+              res.event === "property-change" &&
+              res.name === "time-pos" &&
+              typeof res.data === "number"
+            ) {
+              lastKnownPosition = Math.floor(res.data);
+            }
+          } catch {
+            // ignore parsing errors
           }
-        });
+        }
       });
+
+      client.on("error", () => {
+        if (!resolved && retries < maxRetries) {
+          retries++;
+          setTimeout(tryConnect, 100);
+        }
+      });
+    };
+
+    if (process.platform !== "win32") {
+      setTimeout(tryConnect, 200);
     }
 
     const cleanup = (success: boolean) => {
       if (resolved) return;
       resolved = true;
 
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      const finalPos = lastKnownPosition ?? elapsed;
+      if (client) {
+        try {
+          client.destroy();
+        } catch {
+          // ignore client destroy errors
+        }
+      }
 
-      resolve({success, finalPosition: finalPos});
+      if (process.platform !== "win32" && fs.existsSync(ipcPath)) {
+        try {
+          fs.unlinkSync(ipcPath);
+        } catch {
+          // ignore file deletion errors
+        }
+      }
+
+      const duration = Math.floor((Date.now() - startTime) / 1000);
+      const finalPos = lastKnownPosition ?? duration;
+
+      resolve({ success, finalPosition: finalPos, exitCode, duration });
     };
 
     child.on("error", (err) => {
@@ -170,7 +198,8 @@ const spawnPlayerWithIpc = (
       cleanup(false);
     });
 
-    child.on("exit", () => {
+    child.on("exit", (code) => {
+      exitCode = code;
       cleanup(true);
     });
   });
@@ -183,7 +212,7 @@ export const playUrl = async (
   noBrowser = false,
   metadata?: {slug: string; animeTitle: string; episode: number},
 ): Promise<boolean> => {
-  let playerPath = customPlayer || findPlayer();
+  const playerPath = customPlayer || findPlayer();
   const ytdlpFound = commandExists("yt-dlp");
 
   if (!playerPath) {
@@ -251,13 +280,15 @@ export const playUrl = async (
   }
 
   let finalPosition: number | null = null;
+  let playbackSuccess = false;
 
   if (process.platform === "win32") {
     const startTime = Date.now();
+    let exitCode: number | null = null;
 
     const child = spawn(playerPath, [...finalArgs, url], {
       stdio: ["ignore", "ignore", "ignore"],
-      shell: process.platform === "win32",
+      shell: false,
       env: process.env,
     });
 
@@ -267,12 +298,14 @@ export const playUrl = async (
         resolve();
       });
 
-      child.on("exit", () => {
+      child.on("exit", (code) => {
+        exitCode = code;
         resolve();
       });
     });
 
     const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    playbackSuccess = (exitCode === 0) || (elapsed >= 5);
 
     if (metadata) {
       const cachePath = getResumeCachePath(metadata.slug, metadata.episode);
@@ -295,9 +328,10 @@ export const playUrl = async (
     logger.info(`IPC Path: ${ipcPath}`);
     const result = await spawnPlayerWithIpc(playerPath, [...finalArgs, url], ipcPath);
     finalPosition = result.finalPosition;
+    playbackSuccess = result.success && (result.duration >= 5 || result.exitCode === 0);
   }
 
-  if (finalPosition !== null && finalPosition > 10 && metadata) {
+  if (finalPosition !== null && finalPosition > 10 && metadata && playbackSuccess) {
     addOrUpdateResume({
       slug: metadata.slug,
       episode: metadata.episode,
@@ -308,10 +342,10 @@ export const playUrl = async (
     logger.info(`Resume disimpan untuk Ep ${metadata.episode} pada ${finalPosition}s`);
   }
 
-  if (metadata) {
+  if (metadata && playbackSuccess) {
     const {addToHistory} = await import("./history");
     addToHistory(metadata);
   }
 
-  return true;
+  return playbackSuccess;
 };

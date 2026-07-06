@@ -82,7 +82,9 @@ export const loadConfig = (): AppConfig => {
       }
       fs.writeFileSync(CONFIG_FILE, JSON.stringify({}, null, 2));
       logger.warn("Corrupt config file detected. Resetting to default settings.");
-    } catch (renameErr) {}
+    } catch (renameErr) {
+      // ignore rename/write errors during corruption recovery
+    }
     return {};
   }
 };
