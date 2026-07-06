@@ -33,7 +33,9 @@ export const loadResume = (): ResumeWatchItem[] => {
     logger.error(`Gagal parsing resume.json: ${error.message}, reset ke array kosong.`);
     try {
       fs.unlinkSync(RESUME_FILE);
-    } catch {}
+    } catch {
+      // ignore unlink error
+    }
     return [];
   }
 };

@@ -1,6 +1,6 @@
 {
   "name": "anichi",
-  "version": "2.8.6",
+  "version": "2.9.1",
   "description": "A modern, interactive CLI for discovering, streaming, and managing anime directly from the terminal.",
   "main": "dist/index.js",
   "bin": {
@@ -48,6 +48,8 @@
     "g": "^2.0.1",
     "gradient-string": "^3.0.0",
     "ini": "^6.0.0",
+    "inquirer": "^13.2.1",
+    "keypress": "^0.2.1",
     "node-cache": "^5.1.2",
     "open": "^8.4.2",
     "ora": "^5.4.1",

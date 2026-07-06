@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.8.6-blue.svg)
+![Version](https://img.shields.io/badge/version-2.9.1-blue.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-orange.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)
@@ -88,7 +88,7 @@ yarn global add anichi
 
 ```bash
 anichi --version
-# Output: 2.8.6
+# Output: 2.9.1
 
 anichi --help
 # Shows available commands
@@ -106,7 +106,7 @@ Start the application:
 anichi home or an home
 ```
 
-This launches the main menu. Navigate using number inputs or specific keywords.
+This launches the interactive dashboard. Navigate using your keyboard arrow keys (↑/↓) and press Enter to select.
 
 ### Command Line Options
 
@@ -256,15 +256,17 @@ sudo apt install mpv yt-dlp -y
 ```
 anichi/
 ├── src/
-│   ├── index.ts       # Main logic, commands, and CLI flow
-│   ├── api.ts         # HTTP client (Axios) and caching logic
-│   ├── ui.ts          # Terminal UI, tables, and colors
-│   ├── player.ts      # MPV detection and spawning logic
-│   ├── config.ts      # Configuration file handling
-│   ├── types.ts       # TypeScript interfaces
-│   └── history.ts     # Watch history management
+|   ├── ui
+|   |   ├── interactive.ts  # Terminal UI Interactive
+│   ├── index.ts            # Main logic, commands, and CLI flow
+│   ├── api.ts              # HTTP client (Axios) and caching logic
+│   ├── ui.ts               # Terminal UI, tables, and colors
+│   ├── player.ts           # MPV detection and spawning logic
+│   ├── config.ts           # Configuration file handling
+│   ├── types.ts            # TypeScript interfaces
+│   └── history.ts          # Watch history management
 ├── bin/
-│   └── anichi         # Entry point
+│   └── anichi              # Entry point
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -282,7 +284,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 We would like to thank the following contributors who have helped improve this project:
 
-- [Hafast 2008](https://github.com/Hafiz2818)
+- [Hafast 2008](https://github.com/2Hafast8)
 
 ---
 

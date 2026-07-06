@@ -1,19 +1,6 @@
 import axios, {AxiosInstance} from "axios";
 import NodeCache from "node-cache";
 import ora from "ora";
-import {
-  HomeResponse,
-  OngoingResponse,
-  CompletedResponse,
-  AnimeDetailResponse,
-  GenreResponse,
-  EpisodeResponse,
-  ServerResponse,
-  BatchResponse,
-  SearchResponse,
-  ScheduleResponse,
-  GenreAnimeResponse,
-} from "./types";
 import {logger} from "./ui";
 
 const BASE_URL = "https://shivraapi.my.id/otd";
@@ -103,7 +90,7 @@ class ApiClient {
     return this.request(`/episode/${slug}`);
   }
 
-  async getServer(id: string) {
+  async getServer() {
     return {meta: {status: false}, data: {}};
   }
 
